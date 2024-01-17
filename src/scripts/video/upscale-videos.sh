@@ -49,8 +49,9 @@ do
   # Step 1. Determine the length the video and count how many chunks of $CHUNK_SIZE_IN_SECONDS we need.
   echo "Determining length of $file_name..."
   length_in_seconds=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file_path")
+  length_in_seconds_int=${length_in_seconds%.*}
   echo "Length of $file_name is $length_in_seconds seconds."
-  num_chunks=$((length_in_seconds / CHUNK_SIZE_IN_SECONDS))
+  num_chunks=$(python -c "print(int($length_in_seconds / $CHUNK_SIZE_IN_SECONDS))")
   echo "Splitting $file_name into $num_chunks chunks..."
 
   # Step 2. For each chunk, upscale it and encode it.
@@ -62,13 +63,13 @@ do
     # Step 2a. Determine the start and end time of the chunk.
     start_time=$((i * CHUNK_SIZE_IN_SECONDS))
     end_time=$(((i + 1) * CHUNK_SIZE_IN_SECONDS))
-    if [ $start_time -ge "$length_in_seconds" ]; then
+    if [ $start_time -ge "$length_in_seconds_int" ]; then
       echo "Skipping $file_name chunk $i because it's past the end of the video."
       continue
     fi
 
     # Check if it's the last chunk, and if so, set the end time to the end of the video.
-    if [ $end_time -gt "$length_in_seconds" ]; then
+    if [ $end_time -gt "$length_in_seconds_int" ]; then
       end_time=$length_in_seconds
     fi
 
