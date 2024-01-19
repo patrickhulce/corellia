@@ -75,19 +75,29 @@ do
 
     echo "Processing chunk $i of $num_chunks from $start_time to $end_time..."
     if [ -f "$ENCODED_FILE_PATH" ]; then
-      echo "$file_name chunk $i already encoded."
-      continue
+      # Check if the chunk was the right length.
+      existing_chunk_length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$ENCODED_FILE_PATH" || echo '0')
+      existing_chunk_length_int=${existing_chunk_length%.*}
+      if [ "$existing_chunk_length_int" -ge "$CHUNK_SIZE_IN_SECONDS" ]; then
+        echo "$file_name chunk $i already encoded."
+        continue
+      else
+        echo "Removing existing $file_name chunk $i because it's the wrong length."
+        rm "$ENCODED_FILE_PATH"
+      fi
     fi
 
-    # Step 2b. Upscale the chunk, if it doesn't already exist.
-    if [ -f "$TMP_DIRECTORY/upscaled/$file_name_no_ext-$i.mp4" ]; then
-      echo "Skipping $file_name chunk $i because it already exists in tmp."
-    else
-      echo "Upscaling $file_name chunk $i..."
-      "$SCRIPT_DIR/upscale-video.sh" "$file_path" "$UPSCALED_FILE_PATH" "$start_time" "$end_time"
+    # Step 2b. Delete any existing chunks in tmp/upscaled that aren't in tmp/encoded.
+    if [ -f "$UPSCALED_FILE_PATH" ]; then
+      echo "Removing existing $file_name chunk $i because it already exists in tmp/upscaled, must be partially finished."
+      rm "$UPSCALED_FILE_PATH"
     fi
 
-    # Step 2c. Encode the chunk.
+    # Step 2c. Upscale the chunk.
+    echo "Upscaling $file_name chunk $i..."
+    "$SCRIPT_DIR/upscale-video.sh" "$file_path" "$UPSCALED_FILE_PATH" "$start_time" "$end_time"
+
+    # Step 2d. Encode the chunk.
     ffmpeg -i "$UPSCALED_FILE_PATH" -c:v libx265 -crf 23 "$ENCODED_FILE_PATH"
   done
 
