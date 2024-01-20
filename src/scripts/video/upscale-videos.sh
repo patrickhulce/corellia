@@ -104,8 +104,8 @@ do
   # Step 3. Concatenate all the chunks.
   echo "Concatenating chunks..."
   file_list_path="$TMP_DIRECTORY/$file_name_no_ext-file-list.txt"
-  for i in "$TMP_DIRECTORY/encoded/$file_name_no_ext-"*.mp4; do echo "file '$i'" >> "$file_list_path"; done
-  ffmpeg -f concat -safe 0 -i  -c copy "$output_file_path"
+  for i in $(ls "$TMP_DIRECTORY/encoded/$file_name_no_ext-"*.mp4 | sort -V); do echo "file '$i'" >> "$file_list_path"; done
+  ffmpeg -f concat -safe 0 -i "$file_list_path" -c copy "$output_file_path"
 
   # Step 4. Clean up the tmp directory.
   echo "Cleaning up tmp directory..."
