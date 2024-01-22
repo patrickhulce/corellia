@@ -75,10 +75,10 @@ do
 
     echo "Processing chunk $i of $num_chunks from $start_time to $end_time..."
     if [ -f "$ENCODED_FILE_PATH" ]; then
-      # Check if the chunk was the right length.
+      # Check if the chunk was the right length OR if it was the last chunk.
       existing_chunk_length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$ENCODED_FILE_PATH" || echo '0')
       existing_chunk_length_int=${existing_chunk_length%.*}
-      if [ "$existing_chunk_length_int" -ge "$CHUNK_SIZE_IN_SECONDS" ]; then
+      if [ "$existing_chunk_length_int" -ge "$CHUNK_SIZE_IN_SECONDS" ] || [ "$i" -eq "$num_chunks" ]; then
         echo "$file_name chunk $i already encoded."
         continue
       else
