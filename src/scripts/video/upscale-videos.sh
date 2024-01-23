@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+CURRENT_DIR=$(pwd)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 INPUT_DIRECTORY="./in"
 TMP_DIRECTORY="./tmp"
@@ -103,9 +104,11 @@ do
 
   # Step 3. Concatenate all the chunks.
   echo "Concatenating chunks..."
-  file_list_path="$TMP_DIRECTORY/$file_name_no_ext-file-list.txt"
-  for i in $(ls "$TMP_DIRECTORY/encoded/$file_name_no_ext-"*.mp4 | sort -V); do echo "file '$i'" >> "$file_list_path"; done
-  ffmpeg -f concat -safe 0 -i "$file_list_path" -c copy "$output_file_path"
+  cd "$TMP_DIRECTORY"
+  file_list_path="$file_name_no_ext-file-list.txt"
+  for i in $(ls "encoded/$file_name_no_ext-"*.mp4 | sort -V); do echo "file '$i'" >> "$file_list_path"; done
+  cd "$CURRENT_DIR"
+  ffmpeg -f concat -safe 0 -i "$TMP_DIRECTORY/$file_list_path" -c copy "$output_file_path"
 
   # Step 4. Clean up the tmp directory.
   echo "Cleaning up tmp directory..."
