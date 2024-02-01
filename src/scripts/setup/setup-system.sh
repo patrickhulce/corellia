@@ -81,11 +81,13 @@ alias chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
 alias chrome-canary='/Applications/Google\ Chrome\ Canary.app/Contents/MacOS/Google\ Chrome\ Canary'
 EOF
 
-# Setup key repositories.
-
+# Setup Code
 mkdir -p ~/Code/OpenSource
 mkdir -p ~/Code/Playgrounds
 
 cd ~/Code/OpenSource
 git clone git@github.com:patrickhulce/corellia.git
 git clone git@github.com:patrickhulce/blog.patrickhulce.com.git
+
+# Install scripts directory.
+bash corellia/src/scripts/global/init.sh
