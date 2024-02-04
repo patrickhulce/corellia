@@ -2,6 +2,7 @@ import logging
 import queue
 import threading
 from dataclasses import dataclass
+import time
 from typing import List, Tuple
 
 import cv2
@@ -9,7 +10,9 @@ import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 
-TARGET_FPS = 30
+TARGET_FPS = 5
+TARGET_WIDTH = 1280
+TARGET_HEIGHT = 720
 QUEUE_TIMEOUT = 1 / TARGET_FPS
 
 
@@ -45,9 +48,60 @@ class Pipeline:
 
     exit_signal = threading.Event()
 
+def get_fourcc(capture):
+    # Numeric FourCC value
+    numeric_fourcc = int(capture.get(cv2.CAP_PROP_FOURCC))
 
-def read_frame_from_camera() -> np.ndarray:
-    return np.random.rand(480, 640, 3)
+    # Convert to string representation
+    fourcc_str = chr((numeric_fourcc & 255)) + \
+                chr(((numeric_fourcc >> 8) & 255)) + \
+                chr(((numeric_fourcc >> 16) & 255)) + \
+                chr(((numeric_fourcc >> 24) & 255))
+
+    return fourcc_str
+
+def configure_camera():
+    capture = cv2.VideoCapture(0)  # 0 represents the default webcam, you can change it if you have multiple cameras
+
+    logging.info(f"Default 4CC {get_fourcc(capture)}")
+
+    # Set FourCC to MJPG (MJPEG) - this is the most suitable for 30 fps capture
+    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))
+
+    logging.info(f"Configured 4CC {get_fourcc(capture)}")
+
+    # Check if the webcam is opened successfully
+    if not capture.isOpened():
+        logging.error("Error: Could not open webcam")
+        exit()
+
+    # Set the frame width and height
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
+
+    # Set the frame rate
+    capture.set(cv2.CAP_PROP_FPS, TARGET_FPS)
+
+    # Get the actual frame width and height
+    actual_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    actual_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    if actual_width != TARGET_WIDTH or actual_height != TARGET_HEIGHT:
+        logging.error(f"Error: Camera did not set the frame to {TARGET_WIDTH}x{TARGET_HEIGHT}")
+        exit()
+
+    return capture
+
+
+def read_frame_from_camera(capture: cv2.VideoCapture) -> np.ndarray:
+    ret, frame = capture.read()
+    if not ret:
+        logging.error("Error: Could not read frame from webcam")
+        exit()
+
+    frame = cv2.flip(frame, 1)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    return rgb_frame
 
 
 def thread_loop(pipeline, target_fn):
@@ -66,15 +120,20 @@ def thread_loop(pipeline, target_fn):
 
 
 def frame_reader(pipeline):
+    capture = configure_camera()
+
     def read_frame():
-        frame_from_camera = read_frame_from_camera()
+        frame_from_camera = read_frame_from_camera(capture)
         logging.info("Putting frame in queue")
         pipeline.in_frame_queue.put(
             InFrameQueueItem(frame_from_camera), timeout=QUEUE_TIMEOUT
         )
-
-    thread_loop(pipeline, read_frame)
-    logging.info("Frame reader loop ended")
+    
+    try:
+        thread_loop(pipeline, read_frame)
+        logging.info("Frame reader loop ended")
+    finally:
+        capture.release()
 
 
 def detector(pipeline):
@@ -137,6 +196,10 @@ def main():
     drawer_thread = threading.Thread(target=drawer, args=(pipeline,))
 
     frame_reader_thread.start()
+    # Sleep for a few seconds while we wait for camera to start up
+    print("Sleeping for 2 seconds to let camera start up...")
+    time.sleep(2)
+
     detector_thread.start()
     drawer_thread.start()
 
