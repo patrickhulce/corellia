@@ -5,7 +5,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -euo pipefail
 
 sudo apt-get update
-sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common
+sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common v4l-utils
 
 git config --global user.name "Patrick Hulce"
 git config --global user.email "patrick.hulce@gmail.com"
@@ -40,3 +40,8 @@ rm -rf ~/code/miniconda3/miniconda.sh
 # Setup SSH
 sudo sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config
 sudo systemctl restart sshd
+
+# Install NVM
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+# shellcheck source=/dev/null
+source ~/.bashrc
