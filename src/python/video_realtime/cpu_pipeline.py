@@ -10,7 +10,7 @@ import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 
-TARGET_FPS = 5
+TARGET_FPS = 30
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
 QUEUE_TIMEOUT = 1 / TARGET_FPS
@@ -39,6 +39,35 @@ class ObjectQueueItem:
 class OutFrameQueueItem:
     frame: np.ndarray
 
+# A timer class that allows us to measure arbitrary time intervals using `with timer.span('name'):` blocks
+class Timer:
+    def __init__(self):
+        self.spans = []
+
+    def span(self, name):
+        class TimerSpan:
+            def __enter__(self):
+                self.name = name
+                self.start = time.time()
+                return self
+
+            def __exit__(self, type, value, traceback):
+                self.end = time.time()
+                self.duration = self.end - self.start
+
+        span = TimerSpan()
+        spans.append(span)
+        return span
+
+    def __str__(self):
+        spans_by_name = {}
+        for span in self.spans:
+            if span.name not in spans_by_name:
+                spans_by_name[span.name] = []
+            spans_by_name[span.name].append(span)
+
+        return str({name: sum(span.duration for span in spans) / len(spans) for name, spans in spans_by_name.items()})
+
 
 @dataclass
 class Pipeline:
@@ -46,6 +75,7 @@ class Pipeline:
     objects_queue: queue.Queue[ObjectQueueItem] = queue.Queue(maxsize=1)
     out_frame_queue: queue.Queue[OutFrameQueueItem] = queue.Queue(maxsize=1)
 
+    timer = Timer()
     exit_signal = threading.Event()
 
 def get_fourcc(capture):
@@ -123,7 +153,8 @@ def frame_reader(pipeline):
     capture = configure_camera()
 
     def read_frame():
-        frame_from_camera = read_frame_from_camera(capture)
+        with pipeline.timer.span('read_frame'):
+            frame_from_camera = read_frame_from_camera(capture)
         logging.info("Putting frame in queue")
         pipeline.in_frame_queue.put(
             InFrameQueueItem(frame_from_camera), timeout=QUEUE_TIMEOUT
