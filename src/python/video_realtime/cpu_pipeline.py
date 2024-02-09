@@ -56,7 +56,7 @@ class Timer:
                 self.duration = self.end - self.start
 
         span = TimerSpan()
-        spans.append(span)
+        self.spans.append(span)
         return span
 
     def __str__(self):
@@ -66,7 +66,18 @@ class Timer:
                 spans_by_name[span.name] = []
             spans_by_name[span.name].append(span)
 
-        return str({name: sum(span.duration for span in spans) / len(spans) for name, spans in spans_by_name.items()})
+        summary = ''
+        for name, spans in spans_by_name.items():
+            sorted_durations = sorted(span.duration * 1000 for span in spans)
+
+            # Summary statistics
+            p50 = sorted_durations[int(len(spans) * 0.5)]
+            p95 = sorted_durations[int(len(spans) * 0.95)]
+            p99 = sorted_durations[int(len(spans) * 0.99)]
+
+            summary = f"{summary}{name}: p50={p50:.2f}ms, p95={p95:.2f}ms, p99={p99:.2f}ms\n"
+
+        return summary
 
 
 @dataclass
@@ -248,6 +259,7 @@ def main():
     logging.info("Waiting for drawer to finish...")
     drawer_thread.join()
     logging.info("All threads finished!")
+    print(pipeline.timer)
 
 
 main()
