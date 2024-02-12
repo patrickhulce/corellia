@@ -7,6 +7,9 @@ set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common
 
+git config --global user.name "Patrick Hulce"
+git config --global user.email "patrick.hulce@gmail.com"
+
 # Install Git LFS
 # From https://github.com/git-lfs/git-lfs/blob/main/INSTALLING.md
 curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
