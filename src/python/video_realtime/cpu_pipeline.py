@@ -11,6 +11,7 @@ import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 
+SOURCE = 'camera-v4l2' # 'camera-v4l2', 'camera-gstreamer', or 'file'
 TARGET_FPS = 30
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
@@ -102,7 +103,15 @@ def get_fourcc(capture):
 
     return fourcc_str
 
-def configure_camera():
+def configure_camera_gstreamer():
+    gst_str = ("v4l2src device=/dev/video0 ! " 
+            f"video/x-raw, width=${TARGET_WIDTH}, height=${TARGET_HEIGHT}, framerate=${TARGET_FPS}/1 ! "
+            "videoconvert ! "
+            "appsink")
+    capture = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+    return capture
+
+def configure_camera_v4l2():
     capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
     logging.info(f"Default 4CC {get_fourcc(capture)}")
@@ -134,14 +143,35 @@ def configure_camera():
 
     return capture
 
-
-def read_frame_from_camera(capture: cv2.VideoCapture) -> np.ndarray:
-    ret, frame = capture.read()
-    if not ret:
-        logging.error("Error: Could not read frame from webcam")
+def configure_capture():
+    if SOURCE == 'camera-v4l2':
+        capture = configure_camera_v4l2()
+    elif SOURCE == 'camera-gstreamer':
+        capture = configure_camera_gstreamer()
+    elif SOURCE == 'file':
+        capture = cv2.VideoCapture('.data/input.mp4')
+    else:  
+        logging.error("Error: Invalid source")
         exit()
 
-    return frame
+    return capture
+
+def read_frame_from_camera(capture: cv2.VideoCapture) -> np.ndarray:
+    def read(second_attempt=False):
+        logging.info('Reading frame...')
+        ret, frame = capture.read()
+        if not ret:
+            if SOURCE == 'file' and not second_attempt:
+                # If we're reading from a file, loop back to the beginning
+                capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                return read(second_attempt=True)
+                
+            logging.error("Error: Could not read frame from webcam")
+            exit()
+
+        return frame
+
+    return read()
 
 
 def thread_loop(pipeline, target_fn):
@@ -160,7 +190,7 @@ def thread_loop(pipeline, target_fn):
 
 
 def frame_reader(pipeline):
-    capture = configure_camera()
+    capture = configure_capture()
 
     def read_frame():
         with pipeline.timer.span('read_frame'):
