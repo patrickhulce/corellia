@@ -6,6 +6,7 @@ import time
 from typing import List, Tuple
 
 import cv2
+import cupy as cp
 import numpy as np
 
 logging.basicConfig(level=logging.INFO)
@@ -26,12 +27,12 @@ class BoundingBox:
 
 @dataclass
 class InFrameQueueItem:
-    frame: np.ndarray
+    frame: cp.ndarray
 
 
 @dataclass
 class ObjectQueueItem:
-    frame: np.ndarray
+    frame: cp.ndarray
     objects: List[Tuple[float, float, float, float]]
 
 
@@ -102,7 +103,7 @@ def get_fourcc(capture):
     return fourcc_str
 
 def configure_camera():
-    capture = cv2.VideoCapture(0)  # 0 represents the default webcam, you can change it if you have multiple cameras
+    capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
     logging.info(f"Default 4CC {get_fourcc(capture)}")
 
@@ -140,9 +141,7 @@ def read_frame_from_camera(capture: cv2.VideoCapture) -> np.ndarray:
         logging.error("Error: Could not read frame from webcam")
         exit()
 
-    frame = cv2.flip(frame, 1)
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    return rgb_frame
+    return frame
 
 
 def thread_loop(pipeline, target_fn):
@@ -151,10 +150,10 @@ def thread_loop(pipeline, target_fn):
             try:
                 target_fn()
             except queue.Empty:
-                logging.exception("Queue is empty!")
+                logging.warn("Queue is empty!")
                 continue
             except queue.Full:
-                logging.exception("Queue is full!")
+                logging.warn("Queue is full!")
                 continue
     finally:
         pipeline.exit_signal.set()
@@ -166,9 +165,13 @@ def frame_reader(pipeline):
     def read_frame():
         with pipeline.timer.span('read_frame'):
             frame_from_camera = read_frame_from_camera(capture)
+
+        with pipeline.timer.span('upload_frame'):
+            gpu_frame = cp.asarray(frame_from_camera)
+
         logging.info("Putting frame in queue")
         pipeline.in_frame_queue.put(
-            InFrameQueueItem(frame_from_camera), timeout=QUEUE_TIMEOUT
+            InFrameQueueItem(gpu_frame), timeout=QUEUE_TIMEOUT
         )
     
     try:
@@ -209,7 +212,7 @@ def drawer(pipeline):
 
         logging.info("Putting out frame in queue")
         pipeline.out_frame_queue.put(
-            OutFrameQueueItem(object_data.frame), timeout=QUEUE_TIMEOUT
+            OutFrameQueueItem(object_data.frame.get()), timeout=QUEUE_TIMEOUT
         )
 
     thread_loop(pipeline, draw)
