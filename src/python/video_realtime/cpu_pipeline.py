@@ -9,6 +9,8 @@ import cv2
 import cupy as cp
 import numpy as np
 
+from yolov8_face import YOLOv8Face
+
 logging.basicConfig(level=logging.INFO)
 
 SOURCE = 'camera-v4l2' # 'camera-v4l2', 'camera-gstreamer', or 'file'
@@ -212,13 +214,16 @@ def frame_reader(pipeline):
 
 
 def detector(pipeline):
+    face_detector = YOLOv8Face('.data/models/yolov8n-face.onnx')
     def detect_objects():
         in_frame = pipeline.in_frame_queue.get(timeout=QUEUE_TIMEOUT)
         logging.info("Got frame from queue, detecting objects")
-        objects = []
 
-        for i in range(5):
-            objects.append(BoundingBox(left=i * 30, top=i * 30, width=30, height=30))
+        objects = []
+        with pipeline.timer.span('detect_objects'):
+            detections, confidences, classes, kpts = face_detector.detect(in_frame.frame.get())
+            for detection in detections:
+                objects.append(BoundingBox(left=detection[0], top=detection[1], width=detection[2], height=detection[3]))
 
         logging.info("Putting objects in queue")
         pipeline.objects_queue.put(
