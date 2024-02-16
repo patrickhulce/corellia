@@ -18,15 +18,7 @@ TARGET_FPS = 30
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
 QUEUE_TIMEOUT = 1 / TARGET_FPS
-
-
-@dataclass
-class BoundingBox:
-    left: int
-    top: int
-    width: int
-    height: int
-
+HEADLESS = False
 
 @dataclass
 class InFrameQueueItem:
@@ -171,6 +163,7 @@ def read_frame_from_camera(capture: cv2.VideoCapture) -> np.ndarray:
             logging.error("Error: Could not read frame from webcam")
             exit()
 
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame
 
     return read()
@@ -256,10 +249,14 @@ def drawer(pipeline):
 
 def render(pipeline):
     def render_frame():
-        frame = pipeline.out_frame_queue.get(timeout=QUEUE_TIMEOUT)
+        frame = pipeline.out_frame_queue.get(timeout=QUEUE_TIMEOUT).frame
         logging.info("Got frame from queue, rendering")
 
-        cv2.imshow("Video", frame.frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        if HEADLESS:
+            return
+
+        cv2.imshow("Video", frame)
 
         # Exit on 'q' key
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -277,8 +274,8 @@ def main():
 
     frame_reader_thread.start()
     # Sleep for a few seconds while we wait for camera to start up
-    print("Sleeping for 2 seconds to let camera start up...")
-    time.sleep(2)
+    print("Sleeping for 5 seconds to let camera start up...")
+    time.sleep(5)
 
     detector_thread.start()
     drawer_thread.start()
