@@ -1,15 +1,17 @@
 import logging
 import queue
 import threading
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import cv2
 import cupy as cp
 import numpy as np
 
-from yolov8_face import YOLOv8Face
+from python.video_realtime.models import init_faceswap, run_faceswap
+from python.video_realtime.structs import BoundingBox
+from python.video_realtime.yolov8_face import YOLOv8Face
 
 logging.basicConfig(level=logging.INFO)
 
@@ -206,6 +208,21 @@ def frame_reader(pipeline):
         capture.release()
 
 
+def expand_bounding_box(bbox, frame_width, frame_height, scale=1.2):
+    """
+    Expand a bounding box by a given scale, keeping it centered, and not exceeding the frame boundaries.
+    Enforce the bounding box to be square.
+    """
+    x, y, w, h = bbox
+    center_x, center_y = x + w / 2, y + h / 2
+    max_dim = max(w, h)
+    new_dim = int(max_dim * scale)
+    new_x = int(max(0, center_x - new_dim / 2))
+    new_y = int(max(0, center_y - new_dim / 2))
+    new_w = min(frame_width - new_x, new_dim)
+    new_h = min(frame_height - new_y, new_dim)
+    return new_x, new_y, new_w, new_h
+
 def detector(pipeline):
     face_detector = YOLOv8Face('.data/models/yolov8n-face.onnx')
     def detect_objects():
@@ -216,7 +233,8 @@ def detector(pipeline):
         with pipeline.timer.span('detect_objects'):
             detections, confidences, classes, kpts = face_detector.detect(in_frame.frame.get())
             for detection in detections:
-                objects.append(BoundingBox(left=detection[0], top=detection[1], width=detection[2], height=detection[3]))
+                expanded = expand_bounding_box(detection, in_frame.frame.shape[1], in_frame.frame.shape[0])
+                objects.append(BoundingBox(left=expanded[0], top=expanded[1], width=expanded[2], height=expanded[3]))
 
         logging.info("Putting objects in queue")
         pipeline.objects_queue.put(
@@ -228,14 +246,20 @@ def detector(pipeline):
 
 
 def drawer(pipeline):
+    engine = init_faceswap()
+
     def draw():
         object_data = pipeline.objects_queue.get(timeout=QUEUE_TIMEOUT)
         logging.info("Got objects from queue, drawing")
 
+        if len(object_data.objects) > 0:
+            with pipeline.timer.span('run_faceswap'):
+                object_data.frame = run_faceswap(engine, object_data.frame, object_data.objects)
+
         for object in object_data.objects:
             object_data.frame[
-                object.top : object.top + object.height,
-                object.left : object.left + object.width,
+                object.top : object.top + 10,
+                object.left : object.left + 10,
             ] = 0
 
         logging.info("Putting out frame in queue")
@@ -243,8 +267,11 @@ def drawer(pipeline):
             OutFrameQueueItem(object_data.frame.get()), timeout=QUEUE_TIMEOUT
         )
 
-    thread_loop(pipeline, draw)
-    logging.info("Drawer loop ended")
+    try:
+        thread_loop(pipeline, draw)
+        logging.info("Drawer loop ended")
+    finally:
+        engine.destroy()
 
 
 def render(pipeline):
