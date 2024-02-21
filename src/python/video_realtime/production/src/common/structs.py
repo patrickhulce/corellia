@@ -83,6 +83,9 @@ class Frame(Generic[TObject]):
         elif self.pixel_format == PixelFormat.BGR_uint8:
             assert_hwc(self.pixels)
             return cv2.cvtColor(self.pixels, cv2.COLOR_BGR2RGB)        
+        elif self.pixel_format == PixelFormat.RGBA_uint8:
+            assert_hwc(self.pixels)
+            return cv2.cvtColor(self.pixels, cv2.COLOR_RGBA2RGB)
 
         raise ValueError(f"Unsupported pixel format: {self.pixel_format}")
 
@@ -94,6 +97,9 @@ class Frame(Generic[TObject]):
         elif self.pixel_format == PixelFormat.BGRA_uint8:
             assert_hwc(self.pixels)
             return cv2.cvtColor(self.pixels, cv2.COLOR_BGRA2RGBA)
+        elif self.pixel_format == PixelFormat.RGB_uint8:
+            assert_hwc(self.pixels)
+            return np.dstack([self.pixels, np.full((self.height, self.width), 255, dtype=np.uint8)])
 
         raise ValueError(f"Unsupported pixel format: {self.pixel_format}")
 

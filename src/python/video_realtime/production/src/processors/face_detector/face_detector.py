@@ -1,4 +1,4 @@
-from common.structs import BoundingBox, Frame
+from common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
 from processors.face_detector.yolov8_face import YOLOv8Face
 
 
@@ -24,9 +24,11 @@ class FaceDetector:
         return BoundingBox(new_x, new_y, new_w, new_h)
 
     def __call__(self, frame: Frame) -> Frame:
+        assert frame.pixel_arrangement == PixelArrangement.HWC
+        assert frame.pixel_format == PixelFormat.RGB_uint8
+        
         output_frame = frame.copy()
-        frame_rgb = frame.as_rgb()
-        detections, confidences, classes, kpts = self.detector.detect(frame_rgb)
+        detections, confidences, classes, kpts = self.detector.detect(frame.pixels)
         for detection in detections:
             bbox = self._expand_bounding_box(frame, detection)
             output_frame.objects.append(bbox)
