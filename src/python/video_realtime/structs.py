@@ -11,3 +11,4 @@ class BoundingBox:
     # Support enumeration as x, y, w, h
     def __iter__(self):
         return iter([self.left, self.top, self.width, self.height])
+

@@ -1,6 +1,11 @@
+import threading
 import numpy as np
+import cupy as cp
 import onnxruntime as rt
 import cv2
+from python.video_realtime.models import init_faceswap, run_faceswap
+from python.video_realtime.structs import BoundingBox
+from python.video_realtime.tensorrt2 import init_tensor, run_tensorrt
 
 def load_test_image() -> np.ndarray:
     # Assuming your model expects a 512x512 RGB image
@@ -27,60 +32,38 @@ def save_output(output: np.ndarray, variant: str = 'default'):
     cv2.imwrite(f".data/output-{variant}.png", output)
     print('Done!', output.shape, output.dtype, output.min(), output.max())
 
-
 def test_tensorrt():
-    import tensorrt as trt
-    import numpy as np
-    import pycuda.driver as cuda
-    import pycuda.autoinit  # This is needed for initializing CUDA driver
+    use_new = False
+    use_new = True
 
-    def load_engine(engine_path):
-        TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
-        with open(engine_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
-            return runtime.deserialize_cuda_engine(f.read())
+    engine_tuple = init_tensor()
+    try:
+        capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))
 
-    def allocate_buffers(engine):
-        inputs, outputs, bindings = [], [], []
-        stream = cuda.Stream()
-        for binding in engine:
-            size = trt.volume(engine.get_binding_shape(binding))
-            dtype = trt.nptype(engine.get_binding_dtype(binding))
-            # Allocate host and device buffers
-            host_mem = cuda.pagelocked_empty(size, dtype)
-            device_mem = cuda.mem_alloc(host_mem.nbytes)
-            # Append the device buffer to device bindings.
-            bindings.append(int(device_mem))
-            # Append to the appropriate list.
-            if engine.binding_is_input(binding):
-                inputs.append({'host': host_mem, 'device': device_mem})
+        for i in range(5): 
+            if use_new:
+                # input_data = cv2.imread(".data/image.jpg")
+                # print('Input:', input_data.shape, input_data.dtype, input_data.min(), input_data.max())
+                # input_data = cv2.cvtColor(input_data, cv2.COLOR_BGR2RGB)
+                # input_data = cv2.resize(input_data, (512, 512))
+                ret, frame = capture.read()
+                if not ret:
+                    print("Failed to grab frame")
+                    break
+                print('Input:', frame.shape, frame.dtype, frame.min(), frame.max())
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                output = run_faceswap(engine_tuple, frame, [BoundingBox(0, 0, 400, 400)])
+                # save_output(output, 'tensorrt2')
+                output = cv2.cvtColor(output, cv2.COLOR_RGBA2BGRA)
+                cv2.imwrite(f".data/output-tensor2.png", output)
             else:
-                outputs.append({'host': host_mem, 'device': device_mem})
-        return inputs, outputs, bindings, stream
-
-    engine_path = "model.engine"
-    engine = load_engine(engine_path)
-
-    inputs, outputs, bindings, stream = allocate_buffers(engine)
-
-    # Create a context for executing inference
-    with engine.create_execution_context() as context:
-        # Assuming input data is a numpy array
-        input_data = load_test_image()
-        np.copyto(inputs[0]['host'], input_data.ravel())  # Flatten input
-
-        # Transfer input data to the GPU.
-        cuda.memcpy_htod_async(inputs[0]['device'], inputs[0]['host'], stream)
-        # Execute the model.
-        context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-        # Transfer predictions back from the GPU.
-        cuda.memcpy_dtoh_async(outputs[0]['host'], outputs[0]['device'], stream)
-        # Synchronize the stream
-        stream.synchronize()
-        # The output is now available in outputs[0]['host']
-        print("Output:", outputs[0]['host'])
-        # Reshape back to 4, 512, 512
-        face_img = outputs[0]['host'].reshape(4, 512, 512)
-        save_output(face_img, 'tensorrt')
+                image = run_tensorrt(engine_tuple, load_test_image())
+                save_output(image, 'tensorrt')
+    finally:
+        capture.release()
+        engine_tuple[1].pop()
 
 
 
@@ -98,8 +81,15 @@ def test_onnx():
 
 
 def main():
-    test_tensorrt()
-    test_onnx()
+    # Run each function in a thread.
+    tensor_thread = threading.Thread(target=test_tensorrt)
+    onnx_thread = threading.Thread(target=test_onnx)
+
+    tensor_thread.start()
+    onnx_thread.start()
+
+    tensor_thread.join()
+    onnx_thread.join()
 
 if __name__ == "__main__":
     main()

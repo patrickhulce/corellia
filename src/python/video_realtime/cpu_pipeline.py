@@ -11,16 +11,18 @@ import numpy as np
 
 from python.video_realtime.models import init_faceswap, run_faceswap
 from python.video_realtime.structs import BoundingBox
+from python.video_realtime.tensorrt2 import init_tensor
 from python.video_realtime.yolov8_face import YOLOv8Face
 
 logging.basicConfig(level=logging.INFO)
 
 SOURCE = 'camera-v4l2' # 'camera-v4l2', 'camera-gstreamer', or 'file'
-TARGET_FPS = 30
+TARGET_FPS = 5
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
 QUEUE_TIMEOUT = 1 / TARGET_FPS
 HEADLESS = False
+HEADLESS = True
 
 @dataclass
 class InFrameQueueItem:
@@ -182,6 +184,8 @@ def thread_loop(pipeline, target_fn):
             except queue.Full:
                 logging.warn("Queue is full!")
                 continue
+    except KeyboardInterrupt:
+        logging.info("Keyboard interrupt received")        
     finally:
         pipeline.exit_signal.set()
 
@@ -246,11 +250,12 @@ def detector(pipeline):
 
 
 def drawer(pipeline):
-    engine = init_faceswap()
+    engine = init_tensor()
 
     def draw():
         object_data = pipeline.objects_queue.get(timeout=QUEUE_TIMEOUT)
         logging.info("Got objects from queue, drawing")
+        object_data.frame = cp.asnumpy(object_data.frame)
 
         if len(object_data.objects) > 0:
             with pipeline.timer.span('run_faceswap'):
@@ -264,14 +269,14 @@ def drawer(pipeline):
 
         logging.info("Putting out frame in queue")
         pipeline.out_frame_queue.put(
-            OutFrameQueueItem(object_data.frame.get()), timeout=QUEUE_TIMEOUT
+            OutFrameQueueItem(object_data.frame), timeout=QUEUE_TIMEOUT
         )
 
     try:
         thread_loop(pipeline, draw)
         logging.info("Drawer loop ended")
     finally:
-        engine.destroy()
+        engine[1].pop()
 
 
 def render(pipeline):
