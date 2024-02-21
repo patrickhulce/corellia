@@ -4,7 +4,7 @@ import time
 from python.video_realtime.models import init_faceswap, run_faceswap
 from python.video_realtime.structs import BoundingBox
 from python.video_realtime.tensorrt2 import init_tensor
-from python.video_realtime.yolov8_face import YOLOv8Face
+from python.video_realtime.production.src.processors.face_detector.yolov8_face import YOLOv8Face
 
 TARGET_FPS = 15
 

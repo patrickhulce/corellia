@@ -40,6 +40,14 @@ class Frame(Generic[TObject]):
     pixel_arrangement: PixelArrangement
     objects: List[TObject]
 
+    def copy(self):
+        return Frame(
+            pixels=self.pixels,
+            pixel_format=self.pixel_format,
+            pixel_arrangement=self.pixel_arrangement,
+            objects=self.objects.copy()
+        )
+
     @property
     def width(self):
         if self.pixel_arrangement == PixelArrangement.CHW:
