@@ -5,6 +5,7 @@ from processors.face_swapper import FaceSwapperTensorRT
 from processors.object_marker import ObjectMarker
 from processors.transforms import PixelFormatTransformer
 from sinks.display import DisplaySink
+from sinks.hls import HlsSink
 from sources.file import FileSource
 from sources.webcam import WebcamSource
 
@@ -13,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def main():
     source = FileSource(".data/input.mp4")
-    sink = DisplaySink("Webcam")
+    sink = HlsSink(".data/hls")
     processors = [
         PixelFormatTransformer(PixelFormat.RGB_uint8, PixelArrangement.HWC),
         FaceDetector('.data/models/yolov8n-face.onnx'),
@@ -33,7 +34,6 @@ def main():
             for processor in processors:
                 log.debug(f"Processing frame with {processor}")
                 frame = processor(frame)
-                log.debug(frame)
             sink(frame)
     except KeyboardInterrupt:
         print("User interrupted, exiting gracefully...")
