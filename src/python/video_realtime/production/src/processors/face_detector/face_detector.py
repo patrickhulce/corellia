@@ -12,7 +12,7 @@ class FaceDetector:
     def close(self):
         pass
 
-    def _expand_bounding_box(self, frame: Frame, bbox: BoundingBox, scale: float = 1.2) -> BoundingBox:
+    def _expand_bounding_box(self, frame: Frame, bbox: BoundingBox, scale: float = 1.5) -> BoundingBox:
         x, y, w, h = bbox
         center_x, center_y = x + w / 2, y + h / 2
         max_dim = max(w, h)
