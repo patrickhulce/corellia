@@ -5,13 +5,14 @@ from processors.face_swapper import FaceSwapperTensorRT
 from processors.object_marker import ObjectMarker
 from processors.transforms import PixelFormatTransformer
 from sinks.display import DisplaySink
+from sources.file import FileSource
 from sources.webcam import WebcamSource
 
 log = logging
 logging.basicConfig(level=logging.DEBUG)
 
 def main():
-    source = WebcamSource()
+    source = FileSource(".data/input.mp4")
     sink = DisplaySink("Webcam")
     processors = [
         PixelFormatTransformer(PixelFormat.RGB_uint8, PixelArrangement.HWC),
