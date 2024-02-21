@@ -3,8 +3,6 @@ import numpy as np
 import cupy as cp
 import onnxruntime as rt
 import cv2
-from python.video_realtime.models import init_faceswap, run_faceswap
-from python.video_realtime.structs import BoundingBox
 from python.video_realtime.tensorrt2 import init_tensor, run_tensorrt
 
 def load_test_image() -> np.ndarray:
@@ -33,36 +31,12 @@ def save_output(output: np.ndarray, variant: str = 'default'):
     print('Done!', output.shape, output.dtype, output.min(), output.max())
 
 def test_tensorrt():
-    use_new = False
-    use_new = True
-
     engine_tuple = init_tensor()
+
     try:
-        capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
-        capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))
-
-        for i in range(5): 
-            if use_new:
-                # input_data = cv2.imread(".data/image.jpg")
-                # print('Input:', input_data.shape, input_data.dtype, input_data.min(), input_data.max())
-                # input_data = cv2.cvtColor(input_data, cv2.COLOR_BGR2RGB)
-                # input_data = cv2.resize(input_data, (512, 512))
-                ret, frame = capture.read()
-                if not ret:
-                    print("Failed to grab frame")
-                    break
-                print('Input:', frame.shape, frame.dtype, frame.min(), frame.max())
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-                output = run_faceswap(engine_tuple, frame, [BoundingBox(0, 0, 400, 400)])
-                # save_output(output, 'tensorrt2')
-                output = cv2.cvtColor(output, cv2.COLOR_RGBA2BGRA)
-                cv2.imwrite(f".data/output-tensor2.png", output)
-            else:
-                image = run_tensorrt(engine_tuple, load_test_image())
-                save_output(image, 'tensorrt')
+        image = run_tensorrt(engine_tuple, load_test_image())
+        save_output(image, 'tensorrt')
     finally:
-        capture.release()
         engine_tuple[1].pop()
 
 
