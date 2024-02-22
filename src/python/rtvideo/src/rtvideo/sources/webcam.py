@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from common.structs import Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import Frame, PixelArrangement, PixelFormat
 
 import cv2
 

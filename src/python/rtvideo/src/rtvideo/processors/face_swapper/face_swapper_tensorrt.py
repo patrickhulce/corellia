@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 
-from common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
 
 print(f"Initializing {__name__}")
 log = logging.getLogger(__name__)

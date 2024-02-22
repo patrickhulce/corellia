@@ -1,5 +1,5 @@
-from common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
-from processors.face_detector.yolov8_face import YOLOv8Face
+from rtvideo.common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
+from rtvideo.processors.face_detector.yolov8_face import YOLOv8Face
 
 
 class FaceDetector:

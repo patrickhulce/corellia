@@ -2,8 +2,6 @@ import onnx
 import tensorrt as trt
 import sys
 
-from onnx import shape_inference
-
 def get_input_shape(onnx_path):
     # Load the ONNX model
     onnx_model = onnx.load(onnx_path)

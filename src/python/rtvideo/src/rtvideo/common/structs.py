@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, TypeVar, Generic
-from common.errors import assert_hwc
+from rtvideo.common.errors import assert_hwc
 
 import cv2
 import numpy as np

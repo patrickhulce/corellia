@@ -1,4 +1,4 @@
-from common.structs import Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import Frame, PixelArrangement, PixelFormat
 
 
 class PixelFormatTransformer:

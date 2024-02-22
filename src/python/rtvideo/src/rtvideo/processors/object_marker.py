@@ -1,4 +1,4 @@
-from common.structs import Frame
+from rtvideo.common.structs import Frame
 
 
 class ObjectMarker:

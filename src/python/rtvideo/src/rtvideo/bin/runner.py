@@ -1,16 +1,16 @@
 import logging
-from common.structs import PixelArrangement, PixelFormat
-from processors.face_detector import FaceDetector
-from processors.face_swapper import FaceSwapperTensorRT
-from processors.object_marker import ObjectMarker
-from processors.transforms import PixelFormatTransformer
-from sinks.display import DisplaySink
-from sinks.hls import HlsSink
-from sources.file import FileSource
-from sources.webcam import WebcamSource
+from rtvideo.common.structs import PixelArrangement, PixelFormat
+from rtvideo.processors.face_detector import FaceDetector
+from rtvideo.processors.face_swapper import FaceSwapperTensorRT
+from rtvideo.processors.object_marker import ObjectMarker
+from rtvideo.processors.transforms import PixelFormatTransformer
+from rtvideo.sinks.display import DisplaySink
+from rtvideo.sinks.hls import HlsSink
+from rtvideo.sources.file import FileSource
+from rtvideo.sources.webcam import WebcamSource
 
-log = logging
 logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('rtvideo')
 
 def main():
     source = FileSource(".data/input.mp4")

@@ -1,7 +1,7 @@
 import subprocess as sp
 import cv2
 
-from common.structs import Frame
+from rtvideo.common.structs import Frame
 
 # Define the FFmpeg command. This example encodes the video to H.264, segments it for HLS,
 # and saves the output to the 'output' directory.
