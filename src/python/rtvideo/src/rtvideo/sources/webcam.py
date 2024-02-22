@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from rtvideo.common.structs import Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFormat
 
 import cv2
 
@@ -7,7 +7,7 @@ DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
 DEFAULT_FPS = 30
 
-class WebcamSource:
+class WebcamSource(FrameSource):
     def __init__(self, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, fps = DEFAULT_FPS):
         self.width = width
         self.height = height
@@ -25,9 +25,6 @@ class WebcamSource:
 
     def close(self) -> None:
         self.capture.release()
-
-    def __iter__(self) -> Iterator[Frame]:
-        return self
 
     def __next__(self) -> Frame:
         ret, pixels = self.capture.read()

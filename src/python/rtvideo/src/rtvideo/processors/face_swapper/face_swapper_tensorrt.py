@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 
-from rtvideo.common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import BoundingBox, Frame, FrameProcessor, PixelArrangement, PixelFormat
 
 print(f"Initializing {__name__}")
 log = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class TensorMemoryBinding:
     host: np.ndarray
     device: cuda.DeviceAllocation
 
-class FaceSwapperTensorRT:
+class FaceSwapperTensorRT(FrameProcessor):
     model_path: str
     device: cuda.Device
     device_ctx: cuda.Device
@@ -27,6 +27,9 @@ class FaceSwapperTensorRT:
 
     def __init__(self, model_path: str):
         self.model_path = model_path
+
+    def __str__(self) -> str:
+        return f"FaceSwapperTensorRT(model_path={self.model_path})"
 
     @staticmethod
     def load_engine(model_path: str):

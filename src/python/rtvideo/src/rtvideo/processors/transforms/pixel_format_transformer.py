@@ -1,20 +1,14 @@
-from rtvideo.common.structs import Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import Frame, FrameProcessor, PixelFormat
 
 
-class PixelFormatTransformer:
-    def __init__(self, target_pixel_format: PixelFormat, target_pixel_arrangement: PixelArrangement):
+class PixelFormatTransformer(FrameProcessor):
+    def __init__(self, target_pixel_format: PixelFormat):
         self.target_pixel_format = target_pixel_format
-        self.target_pixel_arrangement = target_pixel_arrangement
 
-    def open(self):
-        pass
-
-    def close(self):
-        pass
+    def __str__(self) -> str:
+        return f"PixelFormatTransformer(target_pixel_format={self.target_pixel_format})"
 
     def __call__(self, frame: Frame) -> Frame:
-        assert frame.pixel_arrangement == self.target_pixel_arrangement
-
         if frame.pixel_format == self.target_pixel_format:
             return frame
 
@@ -23,7 +17,7 @@ class PixelFormatTransformer:
             return Frame(
                 pixels=rgb_pixels,
                 pixel_format=self.target_pixel_format,
-                pixel_arrangement=self.target_pixel_arrangement,
+                pixel_arrangement=frame.pixel_arrangement,
                 objects=frame.objects)
 
         raise NotImplementedError(f"Conversion from {frame.pixel_format} to {self.target_pixel_format} is not supported")

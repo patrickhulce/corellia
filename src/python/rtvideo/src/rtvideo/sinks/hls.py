@@ -97,6 +97,9 @@ class HlsSink:
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
 
+    def __str__(self) -> str:
+        return f"HlsSink(output_dir={self.output_dir})"
+    
     def open(self):
         sp.run(['rm', '-rf', self.output_dir])
         sp.run(['mkdir', '-p', self.output_dir])

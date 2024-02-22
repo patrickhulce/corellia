@@ -1,13 +1,13 @@
-from rtvideo.common.structs import Frame
+from rtvideo.common.structs import Frame, FrameProcessor
 
 import cv2
 
-class DisplaySink:
+class DisplaySink(FrameProcessor):
     def __init__(self, window_name: str):
         self.window_name = window_name
 
-    def open(self):
-        pass
+    def __str__(self) -> str:
+        return f"DisplaySink(window_name={self.window_name})"
 
     def close(self):
         cv2.destroyAllWindows()

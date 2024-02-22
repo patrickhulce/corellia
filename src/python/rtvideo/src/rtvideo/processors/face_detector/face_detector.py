@@ -1,16 +1,16 @@
-from rtvideo.common.structs import BoundingBox, Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import BoundingBox, Frame, FrameProcessor, PixelArrangement, PixelFormat
 from rtvideo.processors.face_detector.yolov8_face import YOLOv8Face
 
 
-class FaceDetector:
+class FaceDetector(FrameProcessor):
     def __init__(self, model_path: str):
         self.model_path = model_path
 
+    def __str__(self) -> str:
+        return f"FaceDetector(model_path={self.model_path})"
+
     def open(self):
         self.detector = YOLOv8Face(self.model_path)
-
-    def close(self):
-        pass
 
     def _expand_bounding_box(self, frame: Frame, bbox: BoundingBox, scale: float = 1.5) -> BoundingBox:
         x, y, w, h = bbox

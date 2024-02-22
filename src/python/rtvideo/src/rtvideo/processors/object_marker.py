@@ -1,12 +1,9 @@
-from rtvideo.common.structs import Frame
+from rtvideo.common.structs import Frame, FrameProcessor
 
 
-class ObjectMarker:
-    def open(self):
-        pass
-
-    def close(self):
-        pass
+class ObjectMarker(FrameProcessor):
+    def __str__(self) -> str:
+        return "ObjectMarker()"
 
     def __call__(self, frame: Frame) -> Frame:
         for object in frame.objects:

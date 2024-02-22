@@ -1,10 +1,10 @@
 from collections.abc import Iterator
-from rtvideo.common.structs import Frame, PixelArrangement, PixelFormat
+from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFormat
 
 import cv2
 
 
-class FileSource:
+class FileSource(FrameSource):
     def __init__(self, file_path: str, loop: bool = True):
         self.loop = loop
         self.file_path = file_path
@@ -17,9 +17,6 @@ class FileSource:
 
     def close(self) -> None:
         self.capture.release()
-
-    def __iter__(self) -> Iterator[Frame]:
-        return self
 
     def __next__(self) -> Frame:
         ret, pixels = self.capture.read()
