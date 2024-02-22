@@ -2,8 +2,10 @@ import threading
 import numpy as np
 import cupy as cp
 import onnxruntime as rt
+import pycuda.driver as cuda
 import cv2
-from python.video_realtime.tensorrt2 import init_tensor, run_tensorrt
+
+from rtvideo.processors.face_swapper import FaceSwapperTensorRT
 
 def load_test_image() -> np.ndarray:
     # Assuming your model expects a 512x512 RGB image
@@ -31,26 +33,27 @@ def save_output(output: np.ndarray, variant: str = 'default'):
     print('Done!', output.shape, output.dtype, output.min(), output.max())
 
 def test_tensorrt():
-    engine_tuple = init_tensor()
+    swapper = FaceSwapperTensorRT('.data/models/faceswap.engine')
 
     try:
-        image = run_tensorrt(engine_tuple, load_test_image())
+        swapper.open()
+        image = swapper._run_tensorrt(load_test_image())
         save_output(image, 'tensorrt')
     finally:
-        engine_tuple[1].pop()
+        swapper.close()
 
 
 
 def test_onnx():
     # Load the ONNX model
-    sess = rt.InferenceSession(".data/models/faceswap.onnx")
+    session = rt.InferenceSession(".data/models/faceswap.onnx")
 
     input_data = load_test_image()
     # Run the model (replace 'input_name' and 'output_name' with actual names)
-    input_name = sess.get_inputs()[0].name
-    output_name = sess.get_outputs()[0].name
+    input_name = session.get_inputs()[0].name
+    output_name = session.get_outputs()[0].name
     print(f'Running model with input {input_name} and output {output_name}')
-    result = sess.run([output_name], {input_name: input_data})
+    result = session.run([output_name], {input_name: input_data})
     save_output(result[0][0], 'onnx')
 
 

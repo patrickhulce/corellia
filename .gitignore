@@ -1,2 +1,4 @@
 .data
+.envrc
+.vscode
 __pycache__

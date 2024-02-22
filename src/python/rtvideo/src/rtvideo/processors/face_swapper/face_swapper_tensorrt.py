@@ -28,13 +28,15 @@ class FaceSwapperTensorRT:
     def __init__(self, model_path: str):
         self.model_path = model_path
 
-    def _load_engine(self):
-        log.info(f'Loading TensorRT ({trt.__version__}) engine from {self.model_path}')
+    @staticmethod
+    def load_engine(model_path: str):
+        log.info(f'Loading TensorRT ({trt.__version__}) engine from {model_path}')
         trt_logger = trt.Logger(trt.Logger.VERBOSE)
-        with open(self.model_path, 'rb') as f, trt.Runtime(trt_logger) as runtime:
+        with open(model_path, 'rb') as f, trt.Runtime(trt_logger) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
 
-    def _allocate_buffers(self, engine):
+    @staticmethod
+    def allocate_buffers(engine: trt.ICudaEngine) -> tuple[list[TensorMemoryBinding], list[TensorMemoryBinding], list[int]]:
         inputs, outputs, bindings = [], [], []
         for binding in engine:
             size = trt.volume(engine.get_binding_shape(binding))
@@ -59,8 +61,8 @@ class FaceSwapperTensorRT:
         self.device = cuda.Device(0)
         self.device_ctx = self.device.make_context()
 
-        self.engine = self._load_engine()
-        self.inputs, self.outputs, self.bindings = self._allocate_buffers(self.engine)
+        self.engine = FaceSwapperTensorRT.load_engine(self.model_path)
+        self.inputs, self.outputs, self.bindings = FaceSwapperTensorRT.allocate_buffers(self.engine)
 
     def close(self):
         self.device_ctx.pop()
