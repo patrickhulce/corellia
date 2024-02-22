@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, TypeVar, Generic
@@ -118,3 +119,26 @@ class Frame(Generic[TObject]):
         rgba_pixels = self.as_rgba()
         assert_hwc(rgba_pixels)
         return cv2.cvtColor(rgba_pixels, cv2.COLOR_RGBA2BGRA)
+
+class FrameSource:
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def __iter__(self) -> Iterator[Frame]:
+        return self
+
+    def __next__(self) -> Frame:
+        raise NotImplementedError
+
+class FrameProcessor:
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def __call__(self, frame: Frame) -> Frame:
+        raise NotImplementedError

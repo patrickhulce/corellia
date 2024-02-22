@@ -1,5 +1,7 @@
 import logging
 from rtvideo.common.structs import PixelArrangement, PixelFormat
+from rtvideo.common.timer import Timer
+from rtvideo.pipelines.single_threaded_pipeline import SingleThreadPipeline
 from rtvideo.processors.face_detector import FaceDetector
 from rtvideo.processors.face_swapper import FaceSwapperTensorRT
 from rtvideo.processors.object_marker import ObjectMarker
@@ -16,33 +18,14 @@ def main():
     source = FileSource(".data/input.mp4")
     sink = HlsSink(".data/hls")
     processors = [
-        PixelFormatTransformer(PixelFormat.RGB_uint8, PixelArrangement.HWC),
+        PixelFormatTransformer(PixelFormat.RGB_uint8),
         FaceDetector('.data/models/yolov8n-face.onnx'),
         FaceSwapperTensorRT('.data/models/faceswap.engine'),
         ObjectMarker(),
+        sink,
     ]
 
-    try:
-        log.info("Opening source, sink, and processors...")
-        source.open()
-        sink.open()
-        for processor in processors:
-            processor.open()
-
-        log.info("Processing frames...")
-        for frame in source:
-            for processor in processors:
-                log.debug(f"Processing frame with {processor}")
-                frame = processor(frame)
-            sink(frame)
-    except KeyboardInterrupt:
-        print("User interrupted, exiting gracefully...")
-    finally:
-        source.close()
-        sink.close()
-        for processor in processors:
-            processor.close()
-
+    SingleThreadPipeline(source, processors, log, Timer()).run()
 
 if __name__ == "__main__":
     main()
