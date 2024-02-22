@@ -1,9 +1,28 @@
 import time
 from collections import deque
+from typing import Any, Optional
+
+class NoopTimerSpan:
+    def start(self):
+        pass
+
+    def end(self):
+        pass
+
+    def span(self, name: str):
+        return self
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        pass
 
 class TimerSpan:
-    def __init__(self, name):
+    def __init__(self, name: str, timer: Any, parent: Optional['TimerSpan'] = None):
         self.name = name
+        self.timer = timer
+        self.parent = parent
 
     def start(self):
         self.start = time.time()
@@ -11,6 +30,9 @@ class TimerSpan:
     def end(self):
         self.end = time.time()
         self.duration = self.end - self.start
+
+    def span(self, name: str):
+        return self.timer.span(name, parent=self)
 
     def __enter__(self):
         self.start()
@@ -23,8 +45,8 @@ class Timer:
     def __init__(self):
         self.spans = deque(maxlen=10000)
 
-    def span(self, name):
-        span = TimerSpan(name)
+    def span(self, name: str, parent: Optional[TimerSpan] = None):
+        span = TimerSpan(name, self, parent)
         self.spans.append(span)
         return span
 

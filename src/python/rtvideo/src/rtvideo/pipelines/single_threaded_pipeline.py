@@ -31,7 +31,8 @@ class SingleThreadPipeline:
                 with timer.span("SingleThreadPipeline(frame)"):
                     for processor in processors:
                         log.debug(f"Processing frame with {processor}")
-                        with timer.span(f"{processor}(frame)"):
+                        with timer.span(f"{processor}(frame)") as frame_span:
+                            processor.active_span = frame_span
                             frame = processor(frame)
         except KeyboardInterrupt:
             log.warn("User interrupted, exiting gracefully...")

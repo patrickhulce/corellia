@@ -7,6 +7,8 @@ from rtvideo.common.errors import assert_hwc
 import cv2
 import numpy as np
 
+from rtvideo.common.timer import NoopTimerSpan, TimerSpan
+
 TObject = TypeVar('TObject')
 
 class PixelFormat(Enum):
@@ -134,6 +136,8 @@ class FrameSource:
         raise NotImplementedError
 
 class FrameProcessor:
+    active_span: TimerSpan = NoopTimerSpan()
+
     def open(self):
         pass
 
