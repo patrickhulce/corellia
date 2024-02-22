@@ -1,20 +1,37 @@
 from dataclasses import dataclass
 import logging
+from typing import Optional
 import tensorrt as trt
 import pycuda.driver as cuda
 
 import numpy as np
+import cupy as cp
+import cupyx
 
 
 log = logging.getLogger(__name__)
 
-@dataclass
 class TensorMemoryBinding:
     size: int
     shape: tuple[int]
     dtype: trt.DataType
     host: np.ndarray
-    device: cuda.DeviceAllocation
+    device: cp.ndarray
+
+    def __init__(self, shape: tuple[int], size: int, dtype: trt.DataType) -> None:
+        self.size = size
+        self.shape = shape
+        self.dtype = dtype
+        self.host = cupyx.zeros_pinned(size, dtype, order='C')
+        self.device = cp.zeros(size, dtype, order='C')
+        
+    def copy_htod_async(self, stream: cp.cuda.Stream) -> None:
+        hostptr = self.host.ctypes.data
+        self.device.data.copy_from_host_async(hostptr, self.host.nbytes, stream)
+
+    def copy_dtoh_async(self, stream: cp.cuda.Stream) -> None:
+        hostptr = self.host.ctypes.data
+        self.device.data.copy_to_host_async(hostptr, self.host.nbytes, stream)
 
 class TensorRTContext:
     engine_path: str
@@ -36,15 +53,15 @@ class TensorRTContext:
         self.engine = TensorRTContext.load_engine(self.engine_path)
         self.inputs, self.outputs, self.bindings = TensorRTContext.allocate_buffers(self.engine)
         self.exec_ctx = self.engine.create_execution_context()
+        self.stream = cp.cuda.Stream(non_blocking=True)
 
-        print("TensorRT Engine Inputs:", self.inputs)
-        print("TensorRT Engine Outputs:", self.outputs)
-        assert len(self.inputs) == 1, "Only 1 input tensor is supported."
-        assert len(self.outputs) == 1, "Only 1 output tensor is supported."
-        assert self.outputs[0].shape[0] == 1, "Only 1 batch size is supported."
+        assert len(self.inputs) == 1, "Only 1 input tensor is currently supported."
 
 
     def close(self):
+        for memory in self.inputs + self.outputs:
+            del memory.device
+
         del self.exec_ctx
         self.device_ctx.pop()
         del self.device_ctx
@@ -60,39 +77,36 @@ class TensorRTContext:
     def allocate_buffers(engine: trt.ICudaEngine) -> tuple[list[TensorMemoryBinding], list[TensorMemoryBinding], list[int]]:
         inputs, outputs, bindings = [], [], []
         for binding in engine:
+            shape = engine.get_binding_shape(binding)
             size = trt.volume(engine.get_binding_shape(binding))
             dtype = trt.nptype(engine.get_binding_dtype(binding))
-            shape = engine.get_binding_shape(binding)
 
-            # Allocate host and device buffers
-            host_mem = cuda.pagelocked_empty(size, dtype)
-            device_mem = cuda.mem_alloc(host_mem.nbytes)
+            memory = TensorMemoryBinding(shape, size, dtype)
+            bindings.append(int(memory.device.data.ptr))
 
-            # Append the device buffer reference to device bindings.
-            bindings.append(int(device_mem))
-
-            # Append to the appropriate list.
             if engine.binding_is_input(binding):
-                inputs.append(TensorMemoryBinding(size, shape, dtype, host_mem, device_mem))
+                inputs.append(memory)
             else:
-                outputs.append(TensorMemoryBinding(size, shape, dtype, host_mem, device_mem))
+                outputs.append(memory)
         return inputs, outputs, bindings
     
-    def run(self, input_data: np.ndarray) -> np.ndarray:
-        stream = cuda.Stream()
+    def run(self, input_data: Optional[np.ndarray] = None, ) -> list[np.ndarray]:
+        stream = self.stream
 
-        # Transfer input data to the GPU.
-        np.copyto(self.inputs[0].host, input_data.ravel())
-        cuda.memcpy_htod_async(self.inputs[0].device, self.inputs[0].host, stream)
+        # If they didn't already use the on-device cupy array then...
+        if input_data is not None:
+            # Transfer input data to the GPU device binding.
+            np.copyto(self.inputs[0].host, input_data.ravel())
+            self.inputs[0].copy_htod_async(stream)
 
         # Execute the model.
-        self.exec_ctx.execute_async_v2(bindings=self.bindings, stream_handle=stream.handle)
+        self.exec_ctx.execute_async_v2(bindings=self.bindings, stream_handle=stream.ptr)
 
         # Transfer predictions back from the GPU.
-        cuda.memcpy_dtoh_async(self.outputs[0].host, self.outputs[0].device, stream)
+        for output in self.outputs:
+            output.copy_dtoh_async(stream)
         stream.synchronize()
 
         # The output is now available in outputs[0].host
         log.debug(f"Output: {self.outputs[0].host}")
-        output_shape = self.outputs[0].shape[1:] # Remove the batch size
-        return self.outputs[0].host.reshape(output_shape)
+        return [output.host.reshape(output.shape) for output in self.outputs]

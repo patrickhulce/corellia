@@ -57,14 +57,15 @@ class FaceSwapperTensorRT(FrameProcessor):
             face_input_rgb_chw_float32 = face_input_rgb_hwc_uint8.transpose((2, 0, 1)).astype(np.float32) / 255.0
             face_input_rgb_chw_float32 = np.expand_dims(face_input_rgb_chw_float32, axis=0)
 
-        with self.active_span.child('run_tensorrt'):
-            face_rgba_chw_float32 = self.tensorrt.run(face_input_rgb_chw_float32)
+        with self.active_span.child('run_tensorrt_faceswap'):
+            # Run the model, select the first output, and remove the batch dimension.
+            face_rgba_chw_float32 = self.tensorrt.run(face_input_rgb_chw_float32)[0][0]
 
         with self.active_span.child('postprocess_frame'):
             face_rgba_hwc_uint8 = (face_rgba_chw_float32.clip(0, 1) * 255).astype(np.uint8).transpose((1, 2, 0))
-            frame_rgba_hwc_uint8 = frame.as_rgba()
 
         with self.active_span.child('composite_images'):
+            frame_rgba_hwc_uint8 = frame.as_rgba()
             self._composite_images(frame_rgba_hwc_uint8, face_rgba_hwc_uint8, face)
 
         output_frame = Frame(
