@@ -5,7 +5,7 @@ import onnxruntime as rt
 import pycuda.driver as cuda
 import cv2
 
-from rtvideo.processors.face_swapper import FaceSwapperTensorRT
+from rtvideo.common.tensorrt_context import TensorRTContext
 
 def load_test_image() -> np.ndarray:
     # Assuming your model expects a 512x512 RGB image
@@ -33,11 +33,11 @@ def save_output(output: np.ndarray, variant: str = 'default'):
     print('Done!', output.shape, output.dtype, output.min(), output.max())
 
 def test_tensorrt():
-    swapper = FaceSwapperTensorRT('.data/models/faceswap.engine')
+    swapper = TensorRTContext('.data/models/faceswap.engine')
 
     try:
         swapper.open()
-        image = swapper._run_tensorrt(load_test_image())
+        image = swapper.run(load_test_image())
         save_output(image, 'tensorrt')
     finally:
         swapper.close()

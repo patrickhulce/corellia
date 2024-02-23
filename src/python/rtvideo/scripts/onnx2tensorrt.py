@@ -1,6 +1,9 @@
+import os
 import onnx
 import tensorrt as trt
 import sys
+
+OVERRIDE_INPUT_SHAPE = os.environ.get('OVERRIDE_INPUT_SHAPE', None)
 
 def get_input_shape(onnx_path):
     # Load the ONNX model
@@ -9,9 +12,15 @@ def get_input_shape(onnx_path):
     # Get the input shape
     onnx_model.graph.input[0].type.tensor_type.shape.dim[0].dim_value = 1
     input_shape = onnx_model.graph.input[0].type.tensor_type.shape.dim
+    print("Unmodified input shape:", input_shape)
+
     input_shape = [dim.dim_value for dim in input_shape]
 
     print(f"Input shape: {input_shape}")
+
+    if OVERRIDE_INPUT_SHAPE:
+        input_shape = [int(x) for x in OVERRIDE_INPUT_SHAPE.split(',')]
+        print(f"Overriding input shape to: {input_shape}")
     return input_shape
 
 def build_engine(onnx_path):
