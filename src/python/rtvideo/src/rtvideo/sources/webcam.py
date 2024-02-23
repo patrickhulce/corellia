@@ -3,6 +3,8 @@ from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFo
 
 import cv2
 
+from rtvideo.common.timer import NoopTimerSpan
+
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
 DEFAULT_FPS = 30
@@ -30,4 +32,6 @@ class WebcamSource(FrameSource):
         ret, pixels = self.capture.read()
         if not ret:
             raise StopIteration
-        return Frame(pixels, PixelFormat.BGR_uint8, PixelArrangement.HWC, [])
+        span = NoopTimerSpan() if self.timer is None else self.timer.span('frame')
+        span.start()
+        return Frame(pixels, PixelFormat.BGR_uint8, PixelArrangement.HWC, [], span=span)

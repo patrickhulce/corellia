@@ -6,7 +6,7 @@ class NoopTimerSpan:
     def start(self):
         pass
 
-    def end(self):
+    def stop(self):
         pass
 
     def span(self, name: str):
@@ -25,11 +25,11 @@ class TimerSpan:
         self.parent = parent
 
     def start(self):
-        self.start = time.time()
+        self.start_ts = time.time()
 
-    def end(self):
-        self.end = time.time()
-        self.duration = self.end - self.start
+    def stop(self):
+        self.end_ts = time.time()
+        self.duration = self.end_ts - self.start_ts
 
     def child(self, name: str):
         return self.timer.span(name, parent=self)
@@ -39,7 +39,7 @@ class TimerSpan:
         return self
 
     def __exit__(self, type, value, traceback):
-        self.end()
+        self.stop()
 
 class Timer:
     def __init__(self):
@@ -53,6 +53,8 @@ class Timer:
     def __str__(self):
         spans_by_name = {}
         for span in self.spans:
+            if 'duration' not in span.__dict__:
+                continue
             if span.name not in spans_by_name:
                 spans_by_name[span.name] = []
             spans_by_name[span.name].append(span)

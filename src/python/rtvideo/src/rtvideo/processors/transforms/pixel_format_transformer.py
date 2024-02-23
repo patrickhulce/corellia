@@ -18,6 +18,7 @@ class PixelFormatTransformer(FrameProcessor):
                 pixels=rgb_pixels,
                 pixel_format=self.target_pixel_format,
                 pixel_arrangement=frame.pixel_arrangement,
-                objects=frame.objects)
+                objects=frame.objects,
+                span=frame.span)
 
         raise NotImplementedError(f"Conversion from {frame.pixel_format} to {self.target_pixel_format} is not supported")

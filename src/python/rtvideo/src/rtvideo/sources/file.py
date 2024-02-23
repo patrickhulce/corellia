@@ -3,6 +3,7 @@ from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFo
 
 import cv2
 
+from rtvideo.common.timer import NoopTimerSpan
 
 class FileSource(FrameSource):
     def __init__(self, file_path: str, loop: bool = True):
@@ -19,6 +20,9 @@ class FileSource(FrameSource):
         self.capture.release()
 
     def __next__(self) -> Frame:
+        span = NoopTimerSpan() if self.timer is None else self.timer.span('frame')
+        span.start()
+        
         ret, pixels = self.capture.read()
         if not ret:
             if self.loop:
@@ -29,4 +33,4 @@ class FileSource(FrameSource):
             else:
                 raise StopIteration
             
-        return Frame(pixels, PixelFormat.BGR_uint8, PixelArrangement.HWC, [])
+        return Frame(pixels, PixelFormat.BGR_uint8, PixelArrangement.HWC, [], span=span)

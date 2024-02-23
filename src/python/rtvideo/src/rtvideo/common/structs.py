@@ -1,13 +1,13 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, TypeVar, Generic
+from typing import List, Optional, TypeVar, Generic
 from rtvideo.common.errors import assert_hwc
 
 import cv2
 import numpy as np
 
-from rtvideo.common.timer import NoopTimerSpan, TimerSpan
+from rtvideo.common.timer import NoopTimerSpan, Timer, TimerSpan
 
 TObject = TypeVar('TObject')
 
@@ -42,13 +42,15 @@ class Frame(Generic[TObject]):
     pixel_format: PixelFormat
     pixel_arrangement: PixelArrangement
     objects: List[TObject]
+    span: TimerSpan = NoopTimerSpan()
 
     def copy(self):
         return Frame(
             pixels=self.pixels,
             pixel_format=self.pixel_format,
             pixel_arrangement=self.pixel_arrangement,
-            objects=self.objects.copy()
+            objects=self.objects.copy(),
+            span=self.span
         )
 
     @property
@@ -123,6 +125,8 @@ class Frame(Generic[TObject]):
         return cv2.cvtColor(rgba_pixels, cv2.COLOR_RGBA2BGRA)
 
 class FrameSource:
+    timer: Optional[Timer] = None
+
     def open(self):
         pass
 

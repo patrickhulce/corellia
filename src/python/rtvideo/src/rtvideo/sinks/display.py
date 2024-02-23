@@ -18,5 +18,6 @@ class DisplaySink(FrameProcessor):
         # Quit if the user has pressed 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
             raise KeyboardInterrupt
+        return frame
 
     

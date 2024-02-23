@@ -1,3 +1,3 @@
-from .face_swapper_tensorrt import FaceSwapper
+from .face_swapper import FaceSwapper
 
 __all__ = ["FaceSwapper"]

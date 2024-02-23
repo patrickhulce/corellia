@@ -101,7 +101,8 @@ class FaceSwapper(FrameProcessor):
             pixels=frame_rgba_hwc_uint8,
             pixel_format=PixelFormat.RGBA_uint8,
             pixel_arrangement=PixelArrangement.HWC,
-            objects=frame.objects
+            objects=frame.objects,
+            span=frame.span
         )
 
         return output_frame

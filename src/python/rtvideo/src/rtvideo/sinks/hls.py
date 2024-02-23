@@ -118,3 +118,4 @@ class HlsSink:
     def __call__(self, frame: Frame) -> Frame:
         self.ffmpeg.stdin.write(frame.as_bgr().tobytes())
         self.ffmpeg.stdin.flush()
+        return frame

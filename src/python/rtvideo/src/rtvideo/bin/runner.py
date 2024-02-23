@@ -1,6 +1,7 @@
 import logging
 from rtvideo.common.structs import PixelArrangement, PixelFormat
 from rtvideo.common.timer import Timer
+from rtvideo.pipelines.multi_threaded_pipeline import MultiThreadPipeline
 from rtvideo.pipelines.single_threaded_pipeline import SingleThreadPipeline
 from rtvideo.processors.face_detector import FaceDetector
 from rtvideo.processors.face_swapper import FaceSwapper
@@ -15,6 +16,9 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('rtvideo')
 
 def main():
+    # source = WebcamSource()
+    # sink = DisplaySink("Webcam")
+
     source = FileSource(".data/input.mp4")
     sink = HlsSink(".data/hls")
     processors = [
@@ -25,7 +29,7 @@ def main():
         sink,
     ]
 
-    SingleThreadPipeline(source, processors, log, Timer()).run()
+    MultiThreadPipeline(source, processors, log, Timer()).run()
 
 if __name__ == "__main__":
     main()
