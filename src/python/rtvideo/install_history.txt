@@ -1,0 +1,69 @@
+  326  sudo apt install v4l-utils
+  331  sudo apt-get install python3=3.10.13
+  332  sudo apt-get install python3-dev=3.10.13
+  335  sudo apt-get install python3-defaults=3.10.6-1~22.04
+  336  sudo apt-get install python3=3.10.6-1~22.04
+  350  conda install numpy
+  488  sudo apt install ./cudnn.deb 
+  489  sudo apt install libcudnn8-dev_8.9.7.29-1+cuda12.2_amd64.deb
+  491  sudo apt install libcudnn8-dev=8.9.7.29-1+cuda12.2
+  504  conda install -c conda-forge cupy cuda-version=12.3
+  527  sudo apt-get install awscli
+  555  pip install onnx
+  557  conda install -c conda-forge onnx2torch
+  560  pip install tensorrt
+  561  pip install pycuda
+  567  sudo apt-get -y install cuda-toolkit-12-3
+  569  sudo apt install nvidia-cuda-toolkit
+  571  pip install pycuda
+  573  pip install pycuda
+  576  pip install onnx
+  582  pip install --upgrade protobuf
+  589  pip install --upgrade protobuf
+  590  pip install onnx --force-reinstall
+  600  sudo apt-get install ca-certificates curl
+  609  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  626  sudo apt-get install -y nvidia-container-toolkit
+  650  pip install nvitop
+  770  pip install onnxruntime
+  775  pip3 install torch torchvision torchaudio
+  802  sudo apt-get install gstreamer1.0-plugins-*
+  805  sudo apt-get install libgstreamer1.0-dev
+  811  conda install -c conda-forge opencv-python
+  812  conda install opencv-python
+  813  pip install opencv-python
+  815  conda install opencv-python
+  816  pip install opencv-python
+  821  conda install -c conda-forge pytorch
+  831  pip install ultralytics
+  969  pip install opencv-python numpy
+ 1003  pip install pycuda
+ 1004  pip install tensorrt
+ 1007  conda install -c nvidia tensorrt
+ 1008  conda install -c conda-forge tensorrt
+ 1009  conda install -c conda-forge cudatoolkit cudnn
+ 1010  pip install tensorrt
+ 1013  pip install --no-cache-dir tensorrt
+ 1039  sudo apt install ffmpeg
+ 1045  conda install -c conda-forge cupy
+ 1055  pip install tensorrt-libs=8.6.1
+ 1056  pip install tensorrt-libs==8.6.1
+ 1057  pip install tensorrt-libs==8.6.1 --extra-index-url https://pypi.nvidia.com
+ 1062  pip install onnxruntime-gpu
+ 1063  pip install --force-reinstall protobuf
+ 1067  pip install onnxruntime
+ 1072  pip install onnxruntime-gpu
+ 1076  pip install onnxruntime
+ 1085  conda install -c conda-forge cupy
+ 1117  pip install --upgrade protobuf onnx onnxruntime
+ 1127  sudo apt install direnv
+ 1186  conda install numba
+ 1212  conda install pytorch
+ 1215  conda install pytorch torchvision torchaudio cudatoolkit=11.8 -c pytorch -c conda-forge
+ 1218  conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+ 1221  pip install onnxruntime-gpu
+ 1223  pip install --force-reinstall protobuf
+ 1232  conda install ffmpeg=4.4.2
+ 1244  pip install nvitop
+ 1267  pip install onnxruntime-gpu
+ 1269  pip install onnxruntime-gpu --force-reinstall
