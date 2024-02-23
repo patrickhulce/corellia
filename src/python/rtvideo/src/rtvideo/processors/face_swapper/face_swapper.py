@@ -2,7 +2,9 @@ import cv2
 import logging
 
 import numpy as np
+import cupy as cp
 import onnxruntime as ort
+import cupyx.scipy.ndimage
 
 from rtvideo.common.structs import BoundingBox, Frame, FrameProcessor, PixelArrangement, PixelFormat
 from rtvideo.common.tensorrt_context import TensorRTContext
@@ -56,17 +58,54 @@ class FaceSwapper(FrameProcessor):
             # Select first output and remove the batch dimension.
             return self.onnx.run([output_name], {input_name: input})[0][0]
         
+    def _composite_images_gpu(self, background: np.ndarray, foreground: np.ndarray, position: BoundingBox) -> np.ndarray:
+        """
+        Composite a foreground image (HWC, RGBA, uint8)
+        onto the background image (HWC, RGB, uint8)
+        at the specified position using Cupy and GPU acceleration.
+        """
+        x, y, w, h = position
+        background = cp.asarray(background)
+        foreground = cp.asarray(foreground)
+
+        # Add alpha channel to the background.
+        background = cp.dstack((background, cp.ones((background.shape[0], background.shape[1], 1), dtype=cp.uint8) * 255))
+        # Resize foreground to match the size of the bounding box.
+        foreground = cupyx.scipy.ndimage.zoom(foreground, (h / foreground.shape[0], w / foreground.shape[1], 1), order=1)
+        # Select out the background region to composite onto.
+        background_region = background[y:y+h, x:x+w]
+        # Composite the foreground onto the background using foreground alpha channel for each pixel.
+        # Multiply the foreground by the alpha channel and add the result to the background.
+        alpha = (foreground[:, :, 3] / 255.0).reshape(h, w, 1)
+        alpha_matrix = cp.broadcast_to(alpha, (h, w, 3))
+        background_region[:, :, 0:3] = (1 - alpha_matrix) * background_region[:, :, 0:3] + alpha_matrix * foreground[:, :, 0:3]
+        # Paste the composited region back into the background.
+        background[y:y+h, x:x+w] = background_region
+        return background.get()
 
     def _composite_images(self, background: np.ndarray, foreground: np.ndarray, position: BoundingBox) -> np.ndarray:
         """
         Composite a foreground image (HWC, RGBA, uint8) 
-        onto the background image (HWC, RGBA, uint8)
+        onto the background image (HWC, RGB, uint8)
         at the specified position.
         """
+        if cp.cuda.is_available():
+            return self._composite_images_gpu(background, foreground, position)
+
         x, y, w, h = position
+        # Add the alpha channel to the background.
+        background = cv2.cvtColor(background, cv2.COLOR_RGB2RGBA)
+        # Resize foreground to match the size of the bounding box.
         foreground = cv2.resize(foreground, (w, h))
-        # FIXME: Implement the compositing algorithm instead of pasting foreground onto background.
-        background[y:y+h, x:x+w] = foreground
+        # Select out the background region to composite onto.
+        background_region = background[y:y+h, x:x+w]
+        # Composite the foreground onto the background using foreground alpha channel for each pixel.
+        # Multiply the foreground by the alpha channel and add the result to the background.
+        alpha = (foreground[:, :, 3] / 255.0).reshape(h, w, 1)
+        alpha_matrix = np.broadcast_to(alpha, (h, w, 3))
+        background_region[:, :, 0:3] = (1 - alpha_matrix) * background_region[:, :, 0:3] + alpha_matrix * foreground[:, :, 0:3]
+        # Paste the composited region back into the background.
+        background[y:y+h, x:x+w] = background_region
         return background
 
     def __call__(self, frame: Frame) -> Frame:
@@ -94,8 +133,8 @@ class FaceSwapper(FrameProcessor):
             face_rgba_hwc_uint8 = (face_rgba_chw_float32.clip(0, 1) * 255).astype(np.uint8).transpose((1, 2, 0))
 
         with self.active_span.child('composite_images'):
-            frame_rgba_hwc_uint8 = frame.as_rgba()
-            self._composite_images(frame_rgba_hwc_uint8, face_rgba_hwc_uint8, face)
+            frame_rgb_hwc_uint8 = frame.pixels
+            frame_rgba_hwc_uint8 = self._composite_images(frame_rgb_hwc_uint8, face_rgba_hwc_uint8, face)
 
         output_frame = Frame(
             pixels=frame_rgba_hwc_uint8,

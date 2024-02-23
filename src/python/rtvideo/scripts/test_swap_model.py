@@ -2,7 +2,6 @@ import threading
 import numpy as np
 import cupy as cp
 import onnxruntime as rt
-import pycuda.driver as cuda
 import cv2
 
 from rtvideo.common.tensorrt_context import TensorRTContext
