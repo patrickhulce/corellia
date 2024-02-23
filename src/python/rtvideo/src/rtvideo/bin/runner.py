@@ -19,7 +19,7 @@ def main():
     sink = HlsSink(".data/hls")
     processors = [
         PixelFormatTransformer(PixelFormat.RGB_uint8),
-        FaceDetector('.data/models/yolov8n-face.onnx'),
+        FaceDetector('.data/models/scrfd_2.5g.onnx'),
         FaceSwapperTensorRT('.data/models/faceswap.engine'),
         ObjectMarker(),
         sink,

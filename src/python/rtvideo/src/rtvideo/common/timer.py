@@ -31,7 +31,7 @@ class TimerSpan:
         self.end = time.time()
         self.duration = self.end - self.start
 
-    def span(self, name: str):
+    def child(self, name: str):
         return self.timer.span(name, parent=self)
 
     def __enter__(self):

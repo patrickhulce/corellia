@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import logging
 from typing import Optional
 import tensorrt as trt
@@ -90,7 +89,7 @@ class TensorRTContext:
                 outputs.append(memory)
         return inputs, outputs, bindings
     
-    def run(self, input_data: Optional[np.ndarray] = None, ) -> list[np.ndarray]:
+    def run(self, input_data: Optional[np.ndarray] = None) -> list[np.ndarray]:
         stream = self.stream
 
         # If they didn't already use the on-device cupy array then...

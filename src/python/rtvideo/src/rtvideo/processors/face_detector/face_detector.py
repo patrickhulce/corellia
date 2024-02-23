@@ -1,4 +1,6 @@
+import numpy as np
 from rtvideo.common.structs import BoundingBox, Frame, FrameProcessor, PixelArrangement, PixelFormat
+from rtvideo.processors.face_detector.scrfd import SCRFD
 from rtvideo.processors.face_detector.yolov8_face import YOLOv8Face
 
 
@@ -10,7 +12,13 @@ class FaceDetector(FrameProcessor):
         return f"FaceDetector(model_path={self.model_path})"
 
     def open(self):
-        self.detector = YOLOv8Face(self.model_path)
+        if 'yolov8' in self.model_path:
+            self.detector = YOLOv8Face(self.model_path)
+        elif 'scrfd' in self.model_path:
+            self.detector = SCRFD(self.model_path)
+            self.detector.detect(np.zeros((640, 640, 3), dtype=np.uint8))
+        else:
+            raise ValueError(f"Unidentified face detector: {self.model_path}")
 
     def _expand_bounding_box(self, frame: Frame, bbox: BoundingBox, scale: float = 1.5) -> BoundingBox:
         x, y, w, h = bbox
@@ -28,7 +36,7 @@ class FaceDetector(FrameProcessor):
         assert frame.pixel_format == PixelFormat.RGB_uint8
         
         output_frame = frame.copy()
-        detections, confidences, classes, kpts = self.detector.detect(frame.pixels)
+        detections = self.detector.detect(frame.pixels)[0]
         for detection in detections:
             bbox = self._expand_bounding_box(frame, detection)
             output_frame.objects.append(bbox)
