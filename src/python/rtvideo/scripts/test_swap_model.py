@@ -6,6 +6,7 @@ import pycuda.driver as cuda
 import cv2
 
 from rtvideo.common.tensorrt_context import TensorRTContext
+from rtvideo.common.timer import Timer
 
 def load_test_image() -> np.ndarray:
     # Assuming your model expects a 512x512 RGB image
@@ -37,7 +38,7 @@ def test_tensorrt():
 
     try:
         swapper.open()
-        image = swapper.run(load_test_image())
+        image = swapper.run(load_test_image())[0][0]
         save_output(image, 'tensorrt')
     finally:
         swapper.close()
@@ -46,15 +47,20 @@ def test_tensorrt():
 
 def test_onnx():
     # Load the ONNX model
-    session = rt.InferenceSession(".data/models/faceswap.onnx")
+    session = rt.InferenceSession(".data/models/faceswap.onnx",
+                                  providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
     input_data = load_test_image()
     # Run the model (replace 'input_name' and 'output_name' with actual names)
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
     print(f'Running model with input {input_name} and output {output_name}')
-    result = session.run([output_name], {input_name: input_data})
+    timer = Timer()
+    for i in range(50):
+        with timer.span("run_onnx_faceswap"):
+            result = session.run([output_name], {input_name: input_data})
     save_output(result[0][0], 'onnx')
+    print(timer)
 
 
 def main():

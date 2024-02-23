@@ -3,7 +3,7 @@ from rtvideo.common.structs import PixelArrangement, PixelFormat
 from rtvideo.common.timer import Timer
 from rtvideo.pipelines.single_threaded_pipeline import SingleThreadPipeline
 from rtvideo.processors.face_detector import FaceDetector
-from rtvideo.processors.face_swapper import FaceSwapperTensorRT
+from rtvideo.processors.face_swapper import FaceSwapper
 from rtvideo.processors.object_marker import ObjectMarker
 from rtvideo.processors.transforms import PixelFormatTransformer
 from rtvideo.sinks.display import DisplaySink
@@ -20,7 +20,7 @@ def main():
     processors = [
         PixelFormatTransformer(PixelFormat.RGB_uint8),
         FaceDetector('.data/models/scrfd_2.5g.onnx'),
-        FaceSwapperTensorRT('.data/models/faceswap.engine'),
+        FaceSwapper('.data/models/faceswap.onnx'),
         ObjectMarker(),
         sink,
     ]

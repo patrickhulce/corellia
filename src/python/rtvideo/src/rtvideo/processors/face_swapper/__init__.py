@@ -1,3 +1,3 @@
-from .face_swapper_tensorrt import FaceSwapperTensorRT
+from .face_swapper_tensorrt import FaceSwapper
 
-__all__ = ["FaceSwapperTensorRT"]
+__all__ = ["FaceSwapper"]
