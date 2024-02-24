@@ -1,3 +1,4 @@
+from typing import Any
 import cv2
 import logging
 
@@ -7,15 +8,13 @@ import onnxruntime as ort
 import cupyx.scipy.ndimage
 
 from rtvideo.common.structs import BoundingBox, Frame, FrameProcessor, PixelArrangement, PixelFormat
-from rtvideo.common.tensorrt_context import TensorRTContext
-from rtvideo.common.timer import NoopTimerSpan, TimerSpan
 
 log = logging.getLogger(__name__)
 
 
 class FaceSwapper(FrameProcessor):
     model_path: str
-    tensorrt: TensorRTContext
+    tensorrt: Any
     onnx: ort.InferenceSession
 
     def __init__(self, model_path: str):
@@ -24,6 +23,7 @@ class FaceSwapper(FrameProcessor):
         self.onnx = None
 
         if model_path.endswith('.engine'):
+            from rtvideo.common.tensorrt_context import TensorRTContext
             self.tensorrt = TensorRTContext(model_path)
         elif model_path.endswith('.onnx'):
             self.onnx = ort.InferenceSession(model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
@@ -51,13 +51,13 @@ class FaceSwapper(FrameProcessor):
         if self.tensorrt is not None:
             # Select first output and remove the batch dimension.
             return self.tensorrt.run(input)[0][0]
-        
+
         if self.onnx is not None:
             input_name = self.onnx.get_inputs()[0].name
             output_name = self.onnx.get_outputs()[0].name
             # Select first output and remove the batch dimension.
             return self.onnx.run([output_name], {input_name: input})[0][0]
-        
+
     def _composite_images_gpu(self, background: np.ndarray, foreground: np.ndarray, position: BoundingBox) -> np.ndarray:
         """
         Composite a foreground image (HWC, RGBA, uint8)
@@ -85,7 +85,7 @@ class FaceSwapper(FrameProcessor):
 
     def _composite_images(self, background: np.ndarray, foreground: np.ndarray, position: BoundingBox) -> np.ndarray:
         """
-        Composite a foreground image (HWC, RGBA, uint8) 
+        Composite a foreground image (HWC, RGBA, uint8)
         onto the background image (HWC, RGB, uint8)
         at the specified position.
         """
@@ -114,7 +114,7 @@ class FaceSwapper(FrameProcessor):
 
         if len(frame.objects) == 0:
             return frame
-        
+
         face = frame.objects[0]
         face_input_rgb_hwc_uint8 = frame.pixels[
             face.top : face.top + face.height,

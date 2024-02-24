@@ -9,12 +9,12 @@ class FileSource(FrameSource):
     def __init__(self, file_path: str, loop: bool = True):
         self.loop = loop
         self.file_path = file_path
-    
+
     def open(self) -> None:
         self.capture = cv2.VideoCapture(self.file_path)
 
         if not self.capture.isOpened():
-            raise RuntimeError("Could not open webcam")
+            raise RuntimeError("Could not open file")
 
     def close(self) -> None:
         self.capture.release()
@@ -22,7 +22,7 @@ class FileSource(FrameSource):
     def __next__(self) -> Frame:
         span = NoopTimerSpan() if self.timer is None else self.timer.span('frame')
         span.start()
-        
+
         ret, pixels = self.capture.read()
         if not ret:
             if self.loop:
@@ -32,5 +32,5 @@ class FileSource(FrameSource):
                     raise StopIteration
             else:
                 raise StopIteration
-            
+
         return Frame(pixels, PixelFormat.BGR_uint8, PixelArrangement.HWC, [], span=span)

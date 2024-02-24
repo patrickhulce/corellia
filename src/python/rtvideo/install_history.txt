@@ -4,7 +4,7 @@
   335  sudo apt-get install python3-defaults=3.10.6-1~22.04
   336  sudo apt-get install python3=3.10.6-1~22.04
   350  conda install numpy
-  488  sudo apt install ./cudnn.deb 
+  488  sudo apt install ./cudnn.deb
   489  sudo apt install libcudnn8-dev_8.9.7.29-1+cuda12.2_amd64.deb
   491  sudo apt install libcudnn8-dev=8.9.7.29-1+cuda12.2
   504  conda install -c conda-forge cupy cuda-version=12.3
@@ -67,3 +67,5 @@
  1244  pip install nvitop
  1267  pip install onnxruntime-gpu
  1269  pip install onnxruntime-gpu --force-reinstall
+pip install onnxruntime-gpu --force-reinstall --extra-index-url https://aiinfra.pkgs.visualstudi
+o.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
