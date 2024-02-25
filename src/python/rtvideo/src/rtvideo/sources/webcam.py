@@ -1,22 +1,23 @@
-from collections.abc import Iterator
-from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFormat
+import os
 
 import cv2
-
+from rtvideo.common.structs import Frame, FrameSource, PixelArrangement, PixelFormat
 from rtvideo.common.timer import NoopTimerSpan
 
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
 DEFAULT_FPS = 30
 
+
 class WebcamSource(FrameSource):
-    def __init__(self, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, fps = DEFAULT_FPS):
+    def __init__(self, width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT, fps=DEFAULT_FPS):
         self.width = width
         self.height = height
         self.fps = fps
-    
+
     def open(self) -> None:
-        self.capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        capture_api = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_V4L2
+        self.capture = cv2.VideoCapture(0, capture_api)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.capture.set(cv2.CAP_PROP_FPS, self.fps)
