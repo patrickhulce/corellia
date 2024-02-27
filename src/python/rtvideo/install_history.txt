@@ -67,5 +67,4 @@
  1244  pip install nvitop
  1267  pip install onnxruntime-gpu
  1269  pip install onnxruntime-gpu --force-reinstall
-pip install onnxruntime-gpu --force-reinstall --extra-index-url https://aiinfra.pkgs.visualstudi
-o.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
+pip install onnxruntime-gpu --force-reinstall --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
