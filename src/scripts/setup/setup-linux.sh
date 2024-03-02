@@ -8,7 +8,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 hostnamectl set-hostname "$HOSTNAME"
 
 sudo apt-get update
-sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common v4l-utils hardinfo zsh direnv
+sudo apt-get install -y dkms build-essential linux-headers-$(uname -r)
+sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common v4l-utils hardinfo zsh direnv unzip
 
 git config --global user.name "Patrick Hulce"
 git config --global user.email "patrick.hulce@gmail.com"
