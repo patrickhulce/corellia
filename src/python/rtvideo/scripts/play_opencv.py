@@ -56,6 +56,11 @@ def main():
             cap = cv2.VideoCapture(args.v4l2_device, cv2.CAP_V4L2)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+            # Get the FOURCC value
+            fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+            fourcc_str = ''.join([chr(c) for c in (fourcc & 0xFF, (fourcc >> 8) & 0xFF, (fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF)])
+            print(f'Current FOURCC is:', fourcc_str)
+            
             cap.set(cv2.CAP_PROP_FPS, args.fps)
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             if args.v4l2_mjpeg:
