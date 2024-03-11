@@ -51,15 +51,19 @@ def run_script(label, command):
         stderr_thread.join()
         print(f"Killed script: {label}")
 
-def ask_for_confirmation(label):
+def ask_for_confirmation(label, skip_confirmation):
+    skip_confirmation = skip_confirmation or ('-y' in sys.argv or '--yes' in sys.argv)
+    if skip_confirmation:
+        return True
+
     response = input(f"Do you want to run the script '{label}'? (Y/n): ").strip().lower()
     return response in ("", "y", "yes")
 
-def run_scripts(scripts_to_run):
+def run_scripts(scripts_to_run, skip_confirmation=False):
     print(f"Running {len(scripts_to_run)} scripts...")
     try:
         for label, command in scripts_to_run:
-            if ask_for_confirmation(label):
+            if ask_for_confirmation(label, skip_confirmation=skip_confirmation):
                     run_script(label, command)
             else:
                 print(f"Skipping script {label}.")
