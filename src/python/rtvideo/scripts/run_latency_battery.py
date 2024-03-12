@@ -33,7 +33,7 @@ def main():
         ("v4l2-reset", f"v4l2-ctl --set-fmt-video=width={WIDTH},height={HEIGHT},pixelformat='{PIXELFORMAT}'", ),
         ("opencv-v4l2", f"python3 {SCRIPTS_DIR}/play_opencv.py v4l2 --width={WIDTH} --height={HEIGHT} --fps={FPS}", ),
         ("v4l2-reset", f"v4l2-ctl --set-fmt-video=width={WIDTH},height={HEIGHT},pixelformat='{PIXELFORMAT}'", ),
-        ("opencv-v4l2-mjpeg", f"python3 {SCRIPTS_DIR}/play_opencv.py v4l2 --width={WIDTH} --height={HEIGHT} --fps={FPS} --v4l2-mjpeg", ),
+        ("opencv-v4l2-mjpeg", f"python3 {SCRIPTS_DIR}/play_opencv.py v4l2 --width={WIDTH} --height={HEIGHT} --fps={FPS} --v4l2-fourcc=MJPG", ),
         ("v4l2-reset", f"v4l2-ctl --set-fmt-video=width={WIDTH},height={HEIGHT},pixelformat='{PIXELFORMAT}'", ),
         ("opencv-gstreamer", f'python3 {SCRIPTS_DIR}/play_opencv.py gstreamer --width={WIDTH} --height={HEIGHT} --fps={FPS} "--gstreamer-args={GSTREAM_SRC} ! appsink"', ),
         ("v4l2-reset", f"v4l2-ctl --set-fmt-video=width={WIDTH},height={HEIGHT},pixelformat='{PIXELFORMAT}'", ),
