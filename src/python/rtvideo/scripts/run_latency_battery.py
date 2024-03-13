@@ -6,10 +6,10 @@ SCRIPTS_DIR = os.path.dirname(os.path.realpath(__file__))
 HOME_DIR = os.environ["HOME"]
 FFPLAY = f"{HOME_DIR}/code/ffmpeg/bin/ffplay"
 GSTREAM_SRC = "decklinkvideosrc ! videoconvert"
-GSTREAM_SRC = "v4l2src device=/dev/video2 ! videoconvert"
+GSTREAM_SRC = "v4l2src device=/dev/video0 ! videoconvert"
 
 FFMPEG_ARGS = "-f decklink -i 'DeckLink SDI 4K'"
-FFMPEG_ARGS = "-f v4l2 -i /dev/video2"
+FFMPEG_ARGS = "-f v4l2 -i /dev/video0"
 WIDTH=1280
 HEIGHT=960
 # WIDTH=1920
