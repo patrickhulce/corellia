@@ -1,1 +1,2 @@
 *.plist binary
+*.ipynb filter=strip-notebook-output

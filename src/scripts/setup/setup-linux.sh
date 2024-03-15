@@ -9,7 +9,7 @@ hostnamectl set-hostname "$HOSTNAME"
 
 sudo apt-get update
 sudo apt-get install -y dkms build-essential linux-headers-$(uname -r)
-sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common v4l-utils hardinfo zsh direnv unzip
+sudo apt-get install -y git curl openssh-server gcc net-tools ubuntu-drivers-common v4l-utils hardinfo zsh direnv unzip pipx
 
 git config --global user.name "Patrick Hulce"
 git config --global user.email "patrick.hulce@gmail.com"
@@ -74,6 +74,8 @@ rm -rf ~/code/miniconda3/miniconda.sh
 
 ~/code/miniconda3/bin/conda init "$(basename "${SHELL}")" # Setup in your shell
 ~/code/miniconda3/bin/conda config --set auto_activate_base false # Don't activate by default
+# Ensure pipx works
+pipx ensurepath
 
 # Setup SSH
 sudo sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config

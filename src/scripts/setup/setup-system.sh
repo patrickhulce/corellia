@@ -4,7 +4,7 @@ set -euxo pipefail
 
 # Install brew dependencies
 brew update
-brew install git mysql redis postgresql coreutils findutils rename jq git-lfs direnv ffmpeg hub
+brew install git mysql redis postgresql coreutils findutils rename jq git-lfs direnv ffmpeg hub pipx
 brew install --cask google-chrome google-chrome-canary firefox spotify spectacle docker slack google-cloud-sdk rescuetime microsoft-edge raycast miniconda
 
 brew services start mysql
@@ -58,9 +58,11 @@ nvm use v20
 echo '\n# automatically load .envrc files\neval "$(direnv hook zsh)"' >> ~/.zshrc
 source ~/.zshrc
 
-# Install conda hooks
+# Setup Python / Conda / Pipx
 conda init "$(basename "${SHELL}")" # Setup conda in your shell
 conda config --set auto_activate_base false # Don't activate by default
+brew install pipx
+pipx ensurepath
 
 # Install Home/End Fix KeyBindings
 # See https://apple.stackexchange.com/questions/16135/remap-home-and-end-to-beginning-and-end-of-line/271111
