@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Landmarks with MediaPipe</title>
+    <link href="https://unpkg.com/tailwindcss@^2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-800 flex justify-center items-center h-screen">
+    <div class="container mx-auto">
+      <video id="webcam" class="w-full h-auto bg-black" autoplay muted></video>
+      <canvas id="output_canvas" class="w-full h-auto"></canvas>
+      <button
+        id="webcamButton"
+        class="mt-4 px-4 py-2 bg-blue-500 text-white font-bold rounded hover:bg-blue-700"
+      >
+        Enable Webcam
+      </button>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
