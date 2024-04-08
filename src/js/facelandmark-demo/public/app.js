@@ -35,8 +35,32 @@ function hasGetUserMedia() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
 }
 
+async function getPreferredDevice() {
+  try {
+    console.log('querying devicess')
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const videoDevices = devices.filter(device => device.kind === 'videoinput')
+
+    // Log available video devices to the console
+    console.log('Video devices:', videoDevices)
+
+    const preferred = videoDevices.find(device => device.label.includes('FaceTime'))
+
+    if (preferred) return preferred.deviceId
+
+    // Example: Select the first video device (if available)
+    if (videoDevices.length > 0) {
+      const deviceId = videoDevices[0].deviceId
+      return deviceId
+    }
+  } catch (error) {
+    console.error('Error enumerating devices:', error)
+  }
+}
+
 // Enable the live webcam view and start detection
 async function enableCam(event) {
+  console.log('enabl click!')
   if (!faceLandmarker) {
     console.log('Wait! faceLandmarker not loaded yet.')
     return
@@ -44,14 +68,23 @@ async function enableCam(event) {
 
   // getUsermedia parameters
   const constraints = {
-    video: true,
+    video: {
+      deviceId: {exact: await getPreferredDevice()},
+    },
   }
 
+  console.log('getting user media')
   // Activate the webcam stream
   navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+    console.log('Activating stream!!')
     video.srcObject = stream
     video.addEventListener('loadeddata', predictWebcam)
   })
+
+  // Hide the #ui element.
+  const ui = document.getElementById('ui')
+  ui.style.display = 'none'
+  viz.style.display = 'block'
 }
 
 const faceImage = new Image()
@@ -112,10 +145,10 @@ async function predictWebcam() {
   const startTimeMs = performance.now()
   const results = await faceLandmarker.detectForVideo(video, startTimeMs)
 
-  // Clear the canvas and draw the video frame
+  // Match the canvas to the video
   canvasElement.width = video.videoWidth
   canvasElement.height = video.videoHeight
-  canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height)
+  // canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height)
 
   if (results.faceLandmarks?.length) {
     // Assuming we're working with the first detected face for simplicity
@@ -194,6 +227,7 @@ async function predictWebcam() {
 
 // Add event listener to button for when user wants to activate the webcam
 if (hasGetUserMedia()) {
+  console.log('wtf')
   enableWebcamButton.addEventListener('click', enableCam)
 } else {
   console.warn('getUserMedia() is not supported by your browser')
