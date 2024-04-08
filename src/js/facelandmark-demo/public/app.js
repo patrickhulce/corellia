@@ -2,6 +2,8 @@ import vision from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3'
 
 const {FaceLandmarker, FilesetResolver, DrawingUtils} = vision
 
+const DEBUG_MODE = window.location.search.includes('debug')
+
 // Select the video element and the canvas for output
 const video = document.getElementById('webcam')
 const canvasElement = document.getElementById('output_canvas')
@@ -37,22 +39,15 @@ function hasGetUserMedia() {
 
 async function getPreferredDevice() {
   try {
-    console.log('querying devicess')
+    console.log('Enumerating video devices...')
     const devices = await navigator.mediaDevices.enumerateDevices()
     const videoDevices = devices.filter(device => device.kind === 'videoinput')
 
     // Log available video devices to the console
-    console.log('Video devices:', videoDevices)
+    console.log('Available video devices:', videoDevices)
 
     const preferred = videoDevices.find(device => device.label.includes('FaceTime'))
-
-    if (preferred) return preferred.deviceId
-
-    // Example: Select the first video device (if available)
-    if (videoDevices.length > 0) {
-      const deviceId = videoDevices[0].deviceId
-      return deviceId
-    }
+    return preferred?.deviceId ?? videoDevices[0].deviceId
   } catch (error) {
     console.error('Error enumerating devices:', error)
   }
@@ -60,28 +55,28 @@ async function getPreferredDevice() {
 
 // Enable the live webcam view and start detection
 async function enableCam(event) {
-  console.log('enabl click!')
   if (!faceLandmarker) {
     console.log('Wait! faceLandmarker not loaded yet.')
     return
   }
 
-  // getUsermedia parameters
+  // getUserMedia parameters
   const constraints = {
     video: {
       deviceId: {exact: await getPreferredDevice()},
     },
   }
 
-  console.log('getting user media')
-  // Activate the webcam stream
+  console.log('Getting user media with constraints:', constraints)
+
+  // Activate the webcam stream and start our prediction loop.
   navigator.mediaDevices.getUserMedia(constraints).then(stream => {
-    console.log('Activating stream!!')
+    console.log('Playing the video stream from the selected webcam.')
     video.srcObject = stream
     video.addEventListener('loadeddata', predictWebcam)
   })
 
-  // Hide the #ui element.
+  // Hide the #ui element once we start the webcam stream.
   const ui = document.getElementById('ui')
   ui.style.display = 'none'
   viz.style.display = 'block'
@@ -89,6 +84,8 @@ async function enableCam(event) {
 
 const faceImage = new Image()
 faceImage.src = 'aang.avif' // Path to your faceImage image
+const faceClosedImage = new Image()
+faceClosedImage.src = 'aang_closed.avif' // Path to your faceImage image with eyes closed
 
 const jawImage = new Image()
 jawImage.src = 'jaw.avif' // Path to your jaw image
@@ -117,6 +114,8 @@ function getBoundingBox(landmarks, selectionRanges = []) {
   return {
     top: yMin,
     left: xMin,
+    bottom: yMax,
+    right: xMax,
     xCenter: (xMin + xMax) / 2,
     yCenter: (yMin + yMax) / 2,
     width: xMax - xMin,
@@ -148,77 +147,10 @@ async function predictWebcam() {
   // Match the canvas to the video
   canvasElement.width = video.videoWidth
   canvasElement.height = video.videoHeight
-  // canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height)
 
   if (results.faceLandmarks?.length) {
     // Assuming we're working with the first detected face for simplicity
-    const landmarks = results.faceLandmarks[0]
-
-    let faceBoundingBox = getBoundingBox(landmarks)
-    const leftEyeBoundingBox = getBoundingBox(landmarks, LEFT_EYE)
-    const rightEyeBoundingBox = getBoundingBox(landmarks, RIGHT_EYE)
-    const noseBoundingBox = getBoundingBox(landmarks, NOSE)
-    const mouthBoundingBox = getBoundingBox(landmarks, MOUTH)
-
-    const eyeCenterX = (leftEyeBoundingBox.xCenter + rightEyeBoundingBox.xCenter) / 2
-    const eyeCenterY = (leftEyeBoundingBox.yCenter + rightEyeBoundingBox.yCenter) / 2
-
-    const eyeDistance = Math.abs(leftEyeBoundingBox.xCenter - rightEyeBoundingBox.xCenter)
-    const eyeToNoseDistance = Math.abs(
-      noseBoundingBox.yCenter + noseBoundingBox.height / 2 - eyeCenterY,
-    )
-
-    faceBoundingBox = {
-      xCenter: eyeCenterX,
-      yCenter: eyeCenterY,
-      width: faceBoundingBox.width,
-      height: faceBoundingBox.width * 1.6,
-    }
-
-    // Draw all the bounding boxes
-    // drawRect(canvasElement, canvasCtx, faceBoundingBox, 'green')
-    // drawRect(canvasElement, canvasCtx, leftEyeBoundingBox, 'blue')
-    // drawRect(canvasElement, canvasCtx, rightEyeBoundingBox, 'blue')
-    // drawRect(canvasElement, canvasCtx, mouthBoundingBox, 'red')
-    // drawRect(canvasElement, canvasCtx, noseBoundingBox, 'yellow')
-
-    const mouthHeightPercent = mouthBoundingBox.height / faceBoundingBox.height
-
-    // Allow 10% mouth height, but every 1% increase in mouth height, displace the drawn jaw by that amount.
-    const minJawDisplacement = faceBoundingBox.height * 0.1
-    const observedJawDisplacement = mouthBoundingBox.height
-
-    const mouthStartY = mouthBoundingBox.yCenter - mouthBoundingBox.height / 2
-    const jawDisplacement = Math.max(minJawDisplacement, observedJawDisplacement * 1.3)
-
-    const faceImageWidth = faceImage.width
-    const faceImageHeight = faceImage.height
-    const targetWidth = faceBoundingBox.width * canvasElement.width
-    const targetHeight = faceBoundingBox.height * canvasElement.height
-
-    const scale = Math.max(targetWidth / faceImageWidth, targetHeight / faceImageHeight) * 1.4
-    const displayWidth = faceImageWidth * scale
-    const displayHeight = faceImageHeight * scale
-
-    // Draw the image on the canvas at the face bounding box position, scaled to the face size.
-    const faceImageX = faceBoundingBox.xCenter * canvasElement.width - displayWidth / 2
-    const faceImageY = faceBoundingBox.yCenter * canvasElement.height - displayHeight / 2
-
-    console.log('Drawing face image at:', faceImageX, faceImageY)
-    canvasCtx.drawImage(faceImage, faceImageX, faceImageY, displayWidth, displayHeight)
-
-    // Draw the jaw image on the canvas at the mouth bounding box position, scaled to the mouth size.
-    const targetJawWidth = mouthBoundingBox.width * canvasElement.width
-    const targetJawHeight = minJawDisplacement * canvasElement.height
-    const jawScale =
-      Math.max(targetJawWidth / jawImage.width, targetJawHeight / jawImage.height) * 1.4
-    const jawDisplayWidth = jawImage.width * jawScale
-    const jawDisplayHeight = jawImage.height * jawScale
-
-    const jawImageX = mouthBoundingBox.xCenter * canvasElement.width - jawDisplayWidth / 2
-    const jawImageY = (mouthStartY + jawDisplacement) * canvasElement.height - jawDisplayHeight / 2
-    console.log('Drawing jaw image at:', jawImageX, jawImageY)
-    canvasCtx.drawImage(jawImage, jawImageX, jawImageY, jawDisplayWidth, jawDisplayHeight)
+    renderAvatarFace(results.faceLandmarks[0])
   }
 
   // Call this function again to keep predicting when the browser is ready
@@ -231,4 +163,99 @@ if (hasGetUserMedia()) {
   enableWebcamButton.addEventListener('click', enableCam)
 } else {
   console.warn('getUserMedia() is not supported by your browser')
+}
+
+function renderAvatarFace(landmarks) {
+  let faceBoundingBox = getBoundingBox(landmarks)
+  const leftEyeBoundingBox = getBoundingBox(landmarks, LEFT_EYE)
+  const rightEyeBoundingBox = getBoundingBox(landmarks, RIGHT_EYE)
+  const noseBoundingBox = getBoundingBox(landmarks, NOSE)
+  const mouthBoundingBox = getBoundingBox(landmarks, MOUTH)
+
+  const eyeCenterX = (leftEyeBoundingBox.xCenter + rightEyeBoundingBox.xCenter) / 2
+  const eyeCenterY = (leftEyeBoundingBox.yCenter + rightEyeBoundingBox.yCenter) / 2
+
+  const eyeDistance = Math.abs(leftEyeBoundingBox.xCenter - rightEyeBoundingBox.xCenter)
+  const eyeToNoseDistance = Math.abs(
+    noseBoundingBox.yCenter + noseBoundingBox.height / 2 - eyeCenterY,
+  )
+
+  faceBoundingBox = {
+    xCenter: eyeCenterX,
+    yCenter: eyeCenterY,
+    width: faceBoundingBox.width,
+    height: faceBoundingBox.width * 1.6,
+  }
+
+  if (DEBUG_MODE) {
+    drawRect(canvasElement, canvasCtx, faceBoundingBox, 'green')
+    drawRect(canvasElement, canvasCtx, leftEyeBoundingBox, 'blue')
+    drawRect(canvasElement, canvasCtx, rightEyeBoundingBox, 'blue')
+    drawRect(canvasElement, canvasCtx, mouthBoundingBox, 'red')
+    drawRect(canvasElement, canvasCtx, noseBoundingBox, 'yellow')
+  }
+
+  const context = {canvasCtx, canvasElement, image: faceImage, boundingBox: faceBoundingBox}
+
+  // Allow 10% mouth height, but every 1% increase in mouth height, displace the drawn jaw by that amount.
+  const minJawDisplacement = faceBoundingBox.height * 0.15
+  const observedJawDisplacement = mouthBoundingBox.height
+
+  const jawDisplacement = Math.max(minJawDisplacement, observedJawDisplacement * 1.3)
+
+  drawScaledImage({label: 'face', ...context})
+  drawScaledImage({
+    label: 'jaw',
+    ...context,
+    boundingBox: mouthBoundingBox,
+    image: jawImage,
+    anchor: 'bottom',
+    displacementFactor: minJawDisplacement,
+  })
+}
+
+/**
+ * Computes the arguments for drawing an image on a canvas, taking into account the bounding box of the area where the image should be drawn, the image itself, the canvas element, and optional parameters for displacement.
+ *
+ * @param {HTMLCanvasElement} canvasElement - The canvas element where the image will be drawn.
+ * @param {Image} image - The image object to be drawn. Should contain width and height properties.
+ * @param {Object} boundingBox - The bounding box within which the image is to be drawn. Should contain width, height, xCenter, and yCenter properties.
+ * @param {number} [displacementFactor=0] - Optional. Factor to adjust the vertical displacement of the image. Useful for images that need to be positioned based on dynamic conditions (e.g., mouth images).
+ * @param {string} [label='image'] - Optional. A label to identify the image being drawn.
+ * @param {string} [anchor='center'] - Optional. The anchor point for the image. Can be 'center' or 'bottom'.
+ * @returns {Object} An object containing the x and y coordinates, and the display width and height for the image to be drawn on the canvas.
+ */
+function drawScaledImage({
+  canvasCtx,
+  canvasElement,
+  image,
+  boundingBox,
+  label = 'image',
+  anchor = 'center',
+  displacementFactor = 0,
+}) {
+  // Calculate the target width and height on the canvas based on the bounding box.
+  const targetWidth = boundingBox.width * canvasElement.width
+  const targetHeight = boundingBox.height * canvasElement.height
+
+  // Determine the scale needed to fit the image within the target dimensions, adjusting by 1.4 to ensure it fully covers the area.
+  const scale = Math.max(targetWidth / image.width) * 1.4
+  const displayWidth = image.width * scale
+  const displayHeight = image.height * scale
+
+  // Calculate the x coordinate to center the image within the detected region.
+  const imageX = boundingBox.xCenter * canvasElement.width - displayWidth / 2
+
+  // Calculate the y coordinate (default to center) to center the image within the detected region.
+  let imageY = boundingBox.yCenter * canvasElement.height - displayHeight / 2
+  if (anchor === 'bottom') {
+    const bottomY = boundingBox.bottom * canvasElement.height
+    imageY = bottomY - displayHeight
+  }
+  if (displacementFactor) {
+    imageY += displacementFactor * canvasElement.height
+  }
+
+  console.log(`Drawing ${label} at:`, imageX, imageY)
+  canvasCtx.drawImage(image, imageX, imageY, displayWidth, displayHeight)
 }
