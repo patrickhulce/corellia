@@ -28,6 +28,9 @@ sudo apt-get install -y "${NVIDIA_DRIVER_VERSION}"
 sudo modprobe nvidia
 lsmod | grep nvidia
 
+# Make sure they don't get autoupdated and kill your NVML config.
+sudo apt-mark hold "${NVIDIA_DRIVER_VERSION}"
+
 # From https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=deb_network
 cd /tmp
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
