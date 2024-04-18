@@ -5,7 +5,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "http-server -p 3000"
+    "start": "http-server -p 3000",
+    "deploy": "surge public/ intro-to-pixel-bending.surge.sh"
   },
   "keywords": [],
   "author": "",
