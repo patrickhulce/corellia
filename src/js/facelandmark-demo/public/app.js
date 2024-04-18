@@ -37,14 +37,19 @@ function hasGetUserMedia() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
 }
 
-async function getPreferredDevice() {
+async function getPreferredDevice(retry = true) {
   try {
     console.log('Enumerating video devices...')
     const devices = await navigator.mediaDevices.enumerateDevices()
-    const videoDevices = devices.filter(device => device.kind === 'videoinput')
+    const videoDevices = devices.filter(device => device.kind === 'videoinput' && device.deviceId)
 
     // Log available video devices to the console
     console.log('Available video devices:', videoDevices)
+    if (!videoDevices.length) {
+      if (!retry) throw new Error('No video devices found')
+      await navigator.mediaDevices.getUserMedia({video: true})
+      return getPreferredDevice(false)
+    }
 
     const preferred = videoDevices.find(device => device.label.includes('FaceTime'))
     return preferred?.deviceId ?? videoDevices[0].deviceId
