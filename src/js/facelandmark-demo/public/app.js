@@ -180,11 +180,6 @@ function renderAvatarFace(landmarks) {
   const eyeCenterX = (leftEyeBoundingBox.xCenter + rightEyeBoundingBox.xCenter) / 2
   const eyeCenterY = (leftEyeBoundingBox.yCenter + rightEyeBoundingBox.yCenter) / 2
 
-  const eyeDistance = Math.abs(leftEyeBoundingBox.xCenter - rightEyeBoundingBox.xCenter)
-  const eyeToNoseDistance = Math.abs(
-    noseBoundingBox.yCenter + noseBoundingBox.height / 2 - eyeCenterY,
-  )
-
   faceBoundingBox = {
     xCenter: eyeCenterX,
     yCenter: eyeCenterY,
@@ -202,11 +197,18 @@ function renderAvatarFace(landmarks) {
 
   const context = {canvasCtx, canvasElement, image: faceImage, boundingBox: faceBoundingBox}
 
-  // Allow 10% mouth height, but every 1% increase in mouth height, displace the drawn jaw by that amount.
-  const minJawDisplacement = faceBoundingBox.height * 0.15
-  const observedJawDisplacement = mouthBoundingBox.height
+  const eyeAngle = getEyeAngle(leftEyeBoundingBox, rightEyeBoundingBox)
+  console.log('Eye angle:', eyeAngle)
 
-  const jawDisplacement = Math.max(minJawDisplacement, observedJawDisplacement * 1.3)
+  // Set transform origin to the center of the face.
+  canvasElement.style.transformOrigin = `${faceBoundingBox.xCenter * 100}% ${
+    faceBoundingBox.yCenter * 100
+  }%`
+  // Apply CSS rotation transform according to the angle
+  canvasElement.style.transform = `rotate(${(360 - eyeAngle) % 360}deg)`
+
+  // Enforce 15% mouth height displacement.
+  const minJawDisplacement = faceBoundingBox.height * 0.15
 
   drawScaledImage({label: 'face', ...context})
   drawScaledImage({
@@ -217,6 +219,15 @@ function renderAvatarFace(landmarks) {
     anchor: 'bottom',
     displacementFactor: minJawDisplacement,
   })
+}
+
+function getEyeAngle(leftEyeBoundingBox, rightEyeBoundingBox) {
+  const eyeDistanceX = rightEyeBoundingBox.xCenter - leftEyeBoundingBox.xCenter
+  const eyeDistanceY = rightEyeBoundingBox.yCenter - leftEyeBoundingBox.yCenter
+
+  const angle = Math.atan(eyeDistanceY / eyeDistanceX)
+  const angleInDegrees = (angle * 180) / Math.PI
+  return angleInDegrees
 }
 
 /**
@@ -244,7 +255,7 @@ function drawScaledImage({
   const targetHeight = boundingBox.height * canvasElement.height
 
   // Determine the scale needed to fit the image within the target dimensions, adjusting by 1.4 to ensure it fully covers the area.
-  const scale = Math.max(targetWidth / image.width) * 1.4
+  const scale = Math.max(targetWidth / image.width) * 1.6
   const displayWidth = image.width * scale
   const displayHeight = image.height * scale
 
