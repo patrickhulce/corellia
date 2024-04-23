@@ -7,7 +7,9 @@ const DEBUG_MODE = window.location.search.includes('debug')
 // Select the video element and the canvas for output
 const video = document.getElementById('webcam')
 const canvasElement = document.getElementById('output_canvas')
+const debugCanvasElement = document.getElementById('debug_canvas')
 const canvasCtx = canvasElement.getContext('2d')
+const debugCtx = debugCanvasElement.getContext('2d')
 
 // Button to enable the webcam
 const enableWebcamButton = document.getElementById('webcamButton')
@@ -51,8 +53,10 @@ async function getPreferredDevice(retry = true) {
       return getPreferredDevice(false)
     }
 
-    const preferred = videoDevices.find(device => device.label.includes('FaceTime'))
-    return preferred?.deviceId ?? videoDevices[0].deviceId
+    const firstPreference = videoDevices.find(device => device.label.includes('FaceTime'))
+    const secondPreference = videoDevices.find(device => device.label.includes('USB Camera'))
+    const preferences = [firstPreference, secondPreference].filter(Boolean)
+    return preferences[0]?.deviceId ?? videoDevices[0].deviceId
   } catch (error) {
     console.error('Error enumerating devices:', error)
   }
@@ -164,13 +168,19 @@ async function predictWebcam() {
 
 // Add event listener to button for when user wants to activate the webcam
 if (hasGetUserMedia()) {
-  console.log('wtf')
   enableWebcamButton.addEventListener('click', enableCam)
 } else {
   console.warn('getUserMedia() is not supported by your browser')
 }
 
 function renderAvatarFace(landmarks) {
+  debugCtx.clearRect(0, 0, debugCanvasElement.width, debugCanvasElement.height)
+  const drawingUtils = new DrawingUtils(debugCtx)
+  drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
+    color: '#3b82f670',
+    lineWidth: 2,
+  })
+
   let faceBoundingBox = getBoundingBox(landmarks)
   const leftEyeBoundingBox = getBoundingBox(landmarks, LEFT_EYE)
   const rightEyeBoundingBox = getBoundingBox(landmarks, RIGHT_EYE)
@@ -208,7 +218,7 @@ function renderAvatarFace(landmarks) {
   canvasElement.style.transform = `rotate(${(360 - eyeAngle) % 360}deg)`
 
   // Enforce 15% mouth height displacement.
-  const minJawDisplacement = faceBoundingBox.height * 0.15
+  const minJawDisplacement = faceBoundingBox.height * 0.2
 
   drawScaledImage({label: 'face', ...context})
   drawScaledImage({
