@@ -81,11 +81,14 @@ export PATH="$PATH:$HOME/.scripts"
 
 alias chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
 alias chrome-canary='/Applications/Google\ Chrome\ Canary.app/Contents/MacOS/Google\ Chrome\ Canary'
+
+export GOOGLE_APPLICATION_CREDENTIALS="$HOME/Code/Config/Secrets/gcloud_credentials.json"
 EOF
 
 # Setup Code
 mkdir -p ~/Code/OpenSource
 mkdir -p ~/Code/Playgrounds
+mkdir -p ~/Code/Config/Secrets
 
 cd ~/Code/OpenSource
 git clone git@github.com:patrickhulce/corellia.git
@@ -93,3 +96,9 @@ git clone git@github.com:patrickhulce/blog.patrickhulce.com.git
 
 # Install scripts directory.
 bash corellia/src/scripts/global/init.sh
+
+# Setup GCloud
+gcloud auth application-default login
+# Go to https://console.cloud.google.com/iam-admin/serviceaccounts?project=patrick-hulce-personal&supportedpurview=project
+# Create a new service account with the "Owner" role and download the JSON key.
+# Save the JSON key to ~/Code/Config/Secrets/gcloud_credentials.json
