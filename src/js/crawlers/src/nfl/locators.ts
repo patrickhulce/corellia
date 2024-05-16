@@ -1,5 +1,5 @@
 import {Locator, Page} from 'playwright'
-import {NflSavedGame, VideoType} from './types'
+import {NflSavedGame, VideoType, Week, getUrlValueFromWeek} from './types'
 
 export async function yearSelector(page: Page): Promise<Locator> {
   return page.getByRole('combobox').filter({hasText: '2023'}).filter({hasText: '2022'})
@@ -48,10 +48,15 @@ export async function extractAvailableVideos(
   )
 }
 
-export async function createGameUrl(game: NflSavedGame): Promise<string> {
-  return `https://www.nfl.com/plus/games/${game.awayTeam.toLowerCase()}-at-${game.homeTeam.toLowerCase()}-${
-    game.season
-  }-${game.week.toLowerCase().replace('week', 'reg').replace(' ', '-')}`
+export function createGameUrl(game: NflSavedGame): string {
+  const teams = `${game.awayTeam.toLowerCase()}-at-${game.homeTeam.toLowerCase()}`
+  const time = `${game.season}-${getUrlValueFromWeek(game.week)}`
+  return `https://www.nfl.com/plus/games/${teams}-${time}`
+}
+
+export function createWeekUrl(season: string, week: Week): string {
+  const weekAdjusted = getUrlValueFromWeek(week).replace('-', '')
+  return `https://www.nfl.com/plus/replays/${season}/${weekAdjusted}`
 }
 
 export async function extractGameInfo(

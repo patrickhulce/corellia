@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import {chromium, Page, Response} from 'playwright'
 import * as locators from './locators'
-import {NflSavedGame, NflMainOptions, NflCrawlState, VideoType} from './types'
+import {NflSavedGame, NflMainOptions, NflCrawlState, VideoType, Week} from './types'
 import waitForExpect from 'wait-for-expect'
 import {downloadVideo, parseM3U8} from './m3u8'
 
@@ -21,13 +21,6 @@ function loadState(options: NflMainOptions): NflCrawlState {
   }
 }
 
-const TARGET_WEEKS = Array.from({length: 17}, (_, i) => `Week ${i + 1}`).concat([
-  'Wild Card Round',
-  'Divisional Round',
-  'Conference Championships',
-  'Super Bowl',
-])
-
 async function waitForSignInOrProfile(page: Page): Promise<{isLoggedIn: boolean}> {
   const signInOrProfile = await Promise.race([
     page.waitForSelector('text="Sign In"', {timeout: 60_000}),
@@ -44,7 +37,11 @@ async function waitForSignInOrProfile(page: Page): Promise<{isLoggedIn: boolean}
 
 async function logInToNflPlus(page: Page, options: NflMainOptions) {
   // Navigate to NFL.com
-  await page.goto('https://www.nfl.com/plus/replays')
+  await page.goto('https://www.nfl.com/plus/replays', {waitUntil: 'domcontentloaded'})
+  await page.waitForTimeout(1_000)
+  await page.click('text="Accept Cookies"')
+  await page.waitForTimeout(1_000)
+  await page.waitForLoadState('domcontentloaded')
 
   const {isLoggedIn} = await waitForSignInOrProfile(page)
   if (isLoggedIn) {
@@ -53,8 +50,6 @@ async function logInToNflPlus(page: Page, options: NflMainOptions) {
   }
 
   console.log('Logging in...')
-  await page.click('text="Accept Cookies"')
-
   // Click on the "Sign In" button
   await page.click('text="Sign In"')
 
@@ -90,13 +85,8 @@ async function selectTargetDownloadWeek(page: Page) {
   }
 
   // Select season and week from dropdowns
-  const $yearSelector = await locators.yearSelector(page)
-  await $yearSelector.selectOption('2023') // Example: Selecting season 2023
-
-  const targetWeek = TARGET_WEEKS[0]
-  const $weekSelector = await locators.weekSelector(page)
-  await $weekSelector.selectOption(targetWeek)
-
+  const targetWeek = Week.Week1
+  await page.goto(locators.createWeekUrl('2023', targetWeek))
   await page.waitForSelector(`text="Replay ${targetWeek}"`)
   await page.waitForTimeout(1_000)
 }
@@ -111,7 +101,7 @@ async function selectNextGame(page: Page): Promise<NflSavedGame | undefined> {
     ).map(async gameCard => {
       return [
         gameCard,
-        await locators.extractGameInfo(gameCard, {season: '2023', week: 'Week 1'}),
+        await locators.extractGameInfo(gameCard, {season: '2023', week: Week.Week1}),
       ] as const
     }),
   )
@@ -185,9 +175,10 @@ async function downloadGame(page: Page, game: NflSavedGame, options: NflMainOpti
   console.log('Clicking on the All-22 video, waiting for master.m3u8...')
   const [_, m3u8response] = await Promise.all([
     all22Video.locator.click(),
-    page.waitForResponse(/master\.m3u8/),
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith('master.m3u8')),
   ])
 
+  console.log('Master M3U8 response URL:', m3u8response.url())
   console.log('Waiting for video to be selected...')
   await waitForExpect(async () => {
     const videos = await locators.extractAvailableVideos(page)
