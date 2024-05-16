@@ -11,9 +11,13 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/lodash": "^4.17.1",
     "@types/node": "^20.12.12",
     "playwright": "^1.44.0",
     "ts-node": "^10.9.2",
     "wait-for-expect": "^3.0.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21"
   }
 }

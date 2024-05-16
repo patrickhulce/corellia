@@ -9,6 +9,9 @@ export interface NflMainOptions {
 
 export interface NflCrawlState {
   savedGames: NflSavedGame[]
+
+  currentSeason: string | undefined
+  currentWeek: Week | undefined
 }
 
 export interface NflSavedGame {
@@ -29,7 +32,6 @@ export enum VideoType {
   All22 = 'All-22',
 }
 
-// All 17 weeks of the regular season, plus the playoff rounds
 export enum Week {
   Week1 = 'Week 1',
   Week2 = 'Week 2',
@@ -48,12 +50,14 @@ export enum Week {
   Week15 = 'Week 15',
   Week16 = 'Week 16',
   Week17 = 'Week 17',
-  Week18 = 'Week 18',
   WildCard = 'Wild Card Round',
   Divisional = 'Divisional Round',
   Conference = 'Conference Championships',
   SuperBowl = 'Super Bowl',
 }
+
+export const SEASONS = ['2023', '2022', '2021', '2020', '2019']
+export const WEEKS = Object.values(Week)
 
 export function getUrlValueFromWeek(week: Week): string {
   if (week === Week.WildCard) return 'post-1'

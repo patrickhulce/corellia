@@ -1,30 +1,32 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import * as _ from 'lodash'
 import {chromium, Page, Response} from 'playwright'
 import * as locators from './locators'
-import {NflSavedGame, NflMainOptions, NflCrawlState, VideoType, Week} from './types'
+import {NflSavedGame, NflMainOptions, NflCrawlState, VideoType, Week, SEASONS, WEEKS} from './types'
 import waitForExpect from 'wait-for-expect'
 import {downloadVideo, parseM3U8} from './m3u8'
 
-function gameSaveToFilename(game: NflSavedGame, extension: string = 'json') {
-  return `${game.season}-${game.week.replace(/\s+/g, '')}-${game.awayTeam}-at-${
-    game.homeTeam
-  }.${extension}`
+function loadSavedGames(options: NflMainOptions): NflSavedGame[] {
+  return fs
+    .readdirSync(options.pathToSavedGames)
+    .filter(f => f.endsWith('.json'))
+    .map(f => JSON.parse(fs.readFileSync(path.join(options.pathToSavedGames, f), 'utf-8')))
 }
 
 function loadState(options: NflMainOptions): NflCrawlState {
   return {
-    savedGames: fs
-      .readdirSync(options.pathToSavedGames)
-      .filter(f => f.endsWith('.json'))
-      .map(f => JSON.parse(fs.readFileSync(path.join(options.pathToSavedGames, f), 'utf-8'))),
+    savedGames: loadSavedGames(options),
+
+    currentSeason: undefined,
+    currentWeek: undefined,
   }
 }
 
 async function waitForSignInOrProfile(page: Page): Promise<{isLoggedIn: boolean}> {
   const signInOrProfile = await Promise.race([
-    page.waitForSelector('text="Sign In"', {timeout: 60_000}),
-    page.waitForSelector('*[data-is-logged-in]', {timeout: 60_000}),
+    page.waitForSelector('text="Sign In"'),
+    page.waitForSelector('*[data-is-logged-in]'),
   ])
   if (!signInOrProfile) {
     throw new Error('Could not find either button')
@@ -68,7 +70,7 @@ async function logInToNflPlus(page: Page, options: NflMainOptions) {
   await page.waitForSelector('*[data-is-logged-in]')
 }
 
-async function selectTargetDownloadWeek(page: Page) {
+async function selectTargetDownloadWeek(page: Page, state: NflCrawlState): Promise<void> {
   // If not already on the replays page, navigate to it.
   const currentUrl = page.url()
   if (!currentUrl.includes('/plus/replays')) {
@@ -84,14 +86,38 @@ async function selectTargetDownloadWeek(page: Page) {
     throw new Error('Not logged in, week selection is not possible')
   }
 
-  // Select season and week from dropdowns
-  const targetWeek = Week.Week1
-  await page.goto(locators.createWeekUrl('2023', targetWeek))
-  await page.waitForSelector(`text="Replay ${targetWeek}"`)
-  await page.waitForTimeout(1_000)
+  console.log('Selecting target download week...')
+  // Figure out where we left off (the season with fewest saved games, latest week in that season).
+  const savedGamesBySeason = state.savedGames.reduce((acc, game) => {
+    if (!acc[game.season]) {
+      acc[game.season] = []
+    }
+    acc[game.season].push(game)
+    return acc
+  }, {} as Record<string, NflSavedGame[]>)
+
+  const seasons = Object.keys(savedGamesBySeason)
+  const seasonWithFewestGames = _.minBy(seasons, s => savedGamesBySeason[s].length) || SEASONS[0]
+  const gamesOfSeason = savedGamesBySeason[seasonWithFewestGames] || []
+  const latestWeek = _.maxBy(gamesOfSeason, g => WEEKS.indexOf(g.week))?.week || Week.Week1
+
+  state.currentSeason = seasonWithFewestGames
+  state.currentWeek = latestWeek
+
+  console.log('Season with fewest games:', seasonWithFewestGames)
+  console.log('Latest week:', latestWeek)
 }
 
-async function selectNextGame(page: Page): Promise<NflSavedGame | undefined> {
+async function selectNextGame(page: Page, state: NflCrawlState): Promise<NflSavedGame | undefined> {
+  if (!state.currentSeason || !state.currentWeek) {
+    throw new Error('Current season or week is not set')
+  }
+
+  console.log('Navigating to week...')
+  await page.goto(locators.createWeekUrl(state.currentSeason, state.currentWeek))
+  await page.waitForSelector(`text="Replay ${state.currentWeek}"`)
+  await page.waitForTimeout(1_000)
+
   console.log('Selecting game...')
   const gameCards = await locators.gameCard(page)
 
@@ -101,7 +127,10 @@ async function selectNextGame(page: Page): Promise<NflSavedGame | undefined> {
     ).map(async gameCard => {
       return [
         gameCard,
-        await locators.extractGameInfo(gameCard, {season: '2023', week: Week.Week1}),
+        await locators.extractGameInfo(gameCard, {
+          season: state.currentSeason!,
+          week: state.currentWeek!,
+        }),
       ] as const
     }),
   )
@@ -119,14 +148,38 @@ async function selectNextGame(page: Page): Promise<NflSavedGame | undefined> {
     throw new Error('Not logged in, game navigation is not possible')
   }
 
-  console.log('navigating to game...')
+  // Find the first game that hasn't been saved yet.
+  const savedGameFiles = new Set(state.savedGames.map(g => g.videoFilename))
+  console.log('Saved game files:', savedGameFiles)
+  const unsavedGames = games.filter(g => !savedGameFiles.has(g[1].videoFilename))
+  console.log('Unsaved games:', unsavedGames)
+
+  if (unsavedGames.length === 0) {
+    console.log('No unsaved games found, moving on...')
+    const nextWeekIndex = WEEKS.indexOf(state.currentWeek!) + 1
+    if (nextWeekIndex >= WEEKS.length) {
+      const nextSeasonIndex = SEASONS.indexOf(state.currentSeason!) + 1
+      if (nextSeasonIndex >= SEASONS.length) {
+        console.log('No more games to download')
+        return
+      }
+      state.currentSeason = SEASONS[nextSeasonIndex]
+      state.currentWeek = WEEKS[0]
+    } else {
+      state.currentWeek = WEEKS[nextWeekIndex]
+    }
+    return
+  }
+
+  const targetGame = unsavedGames[0][1]
+  console.log(`Navigating to game ${targetGame.awayTeam} at ${targetGame.homeTeam}...`)
   await page.waitForTimeout(3_000)
 
-  const url = await locators.createGameUrl(games[0][1])
+  const url = await locators.createGameUrl(targetGame)
   console.log('Navigating to:', url)
   await page.goto(url, {waitUntil: 'domcontentloaded'})
 
-  return games[0][1]
+  return targetGame
 }
 
 async function downloadGame(page: Page, game: NflSavedGame, options: NflMainOptions) {
@@ -138,7 +191,6 @@ async function downloadGame(page: Page, game: NflSavedGame, options: NflMainOpti
   }
 
   // List available game types.
-
   await waitForExpect(async () => {
     const videos = await locators.extractAvailableVideos(page)
     const selectedVideo = videos.find(v => v.selected)
@@ -196,14 +248,15 @@ async function downloadGame(page: Page, game: NflSavedGame, options: NflMainOpti
 
   const hdResolution = streams.find(s => s.resolution === '1920x1080')
   if (!hdResolution) {
-    throw new Error('Could not find the 1080p resolution')
+    console.log('HD resolution not found, skipping...')
+    return
   }
 
-  const videoFilename = gameSaveToFilename(game, 'mp4')
+  const videoFilename = locators.gameSaveToFilename(game, 'mp4')
   game.videoFilename = videoFilename
   game.resolution = '1080p'
   const videoPath = path.join(options.pathToSavedGames, videoFilename)
-  const jsonPath = path.join(options.pathToSavedGames, gameSaveToFilename(game, 'json'))
+  const jsonPath = path.join(options.pathToSavedGames, locators.gameSaveToFilename(game, 'json'))
   if (fs.existsSync(videoPath)) {
     if (fs.existsSync(jsonPath)) {
       console.log('Game already downloaded, skipping...')
@@ -239,12 +292,20 @@ export async function runNflCrawl(options: NflMainOptions) {
   const page = await context.newPage()
 
   await logInToNflPlus(page, options)
-  await selectTargetDownloadWeek(page)
-  const game = await selectNextGame(page)
-  if (!game) {
-    throw new Error('No games found')
+
+  // Load existing saved games.
+  const state = loadState(options)
+
+  // Figure out the next season and week to look at.
+  await selectTargetDownloadWeek(page, state)
+
+  while (true) {
+    // Download all games for the target week we haven't seen yet.
+    state.savedGames = loadSavedGames(options)
+    const game = await selectNextGame(page, state)
+    if (!game) break
+    await downloadGame(page, game, options)
   }
-  await downloadGame(page, game, options)
 
   await context.close()
   await browser.close()

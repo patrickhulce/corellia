@@ -48,6 +48,12 @@ export async function extractAvailableVideos(
   )
 }
 
+export function gameSaveToFilename(game: NflSavedGame, extension: string = 'json') {
+  return `${game.season}-${game.week.replace(/\s+/g, '')}-${game.awayTeam}-at-${
+    game.homeTeam
+  }.${extension}`
+}
+
 export function createGameUrl(game: NflSavedGame): string {
   const teams = `${game.awayTeam.toLowerCase()}-at-${game.homeTeam.toLowerCase()}`
   const time = `${game.season}-${getUrlValueFromWeek(game.week)}`
@@ -64,15 +70,15 @@ export async function extractGameInfo(
   context: Pick<NflSavedGame, 'season' | 'week'>,
 ): Promise<NflSavedGame> {
   const teams = await gameCard.getByTestId('replay-card-team-section')
-  const awayTeam = ((await teams.first().textContent()) || '').replace(/\d+/, '').trim()
-  const homeTeam = ((await teams.last().textContent()) || '').replace(/\d+/, '').trim()
+  const awayTeam = ((await teams.first().textContent()) || '').trim().replace(/\d+$/, '')
+  const homeTeam = ((await teams.last().textContent()) || '').trim().replace(/\d+$/, '')
 
   const date = ((await gameCard.getByTestId('replay-card-footer').textContent()) || '')
     .split('·')[1]
     .trim()
     .replace(/(\w{3} \d+).*/g, '$1')
 
-  return {
+  const gameSave: NflSavedGame = {
     season: context.season,
     week: context.week,
     awayTeam,
@@ -82,4 +88,7 @@ export async function extractGameInfo(
     videoFilename: '',
     resolution: '1080p',
   }
+
+  gameSave.videoFilename = gameSaveToFilename(gameSave, 'mp4')
+  return gameSave
 }
