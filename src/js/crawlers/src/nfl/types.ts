@@ -2,6 +2,8 @@ export interface NflMainOptions {
   username: string
   password: string
 
+  userDataDir: string
+  ytDlpExecutable: string
   pathToSavedGames: string
 }
 
@@ -19,4 +21,10 @@ export interface NflSavedGame {
 
   videoFilename: string
   resolution: '720p' | '1080p'
+}
+
+export enum VideoType {
+  FullGame = 'Full Game Replay',
+  CondensedGame = 'Condensed Game Replay',
+  All22 = 'All-22',
 }
