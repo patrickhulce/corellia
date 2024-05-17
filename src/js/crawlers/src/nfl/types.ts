@@ -5,28 +5,35 @@ export interface NflMainOptions {
   userDataDir: string
   ytDlpExecutable: string
   pathToSavedGames: string
+
+  targetResolution: '1080p' | '720p'
 }
 
 export interface NflCrawlState {
-  savedGames: NflSavedGame[]
+  savedGames: NflGameSave[]
 
-  currentSeason: string | undefined
-  currentWeek: Week | undefined
+  season: NflGame['season']
+  week: Week
 }
 
-export interface NflSavedGame {
-  season: string // Example: '2023'
+export interface NflGame {
+  season: '2023' | '2022' | '2021' | string
   week: Week
 
   awayTeam: string
   homeTeam: string
   date: string
+}
 
+export interface NflGameSave extends NflGame {
   videoFilename: string
   resolution: '720p' | '1080p'
+
+  downloadedAt: string // ISO date string
 }
 
 export enum VideoType {
+  Any = 'any',
   FullGame = 'Full Game Replay',
   CondensedGame = 'Condensed Game Replay',
   All22 = 'All-22',
@@ -66,3 +73,30 @@ export function getUrlValueFromWeek(week: Week): string {
   if (week === Week.SuperBowl) return 'post-4'
   return week.toLowerCase().replace('week', 'reg').replace(' ', '-')
 }
+
+export function getWeekFromUrlValue(urlPart: string): Week {
+  let week = WEEKS.find(week => urlPart === getUrlValueFromWeek(week))
+  if (week) return week
+  week = WEEKS.find(week => urlPart === getUrlValueFromWeek(week).replace('-', ''))
+  if (week) return week
+
+  throw new Error(`unknown week value: ${urlPart}`)
+}
+
+export function createNflGameSave(
+  game: Omit<NflGame, 'videoFilename' | 'resolution'>,
+): NflGameSave {
+  return {
+    ...game,
+    videoFilename: getFilenameForGame(game),
+    resolution: '1080p',
+    downloadedAt: new Date().toISOString(),
+  }
+}
+
+export function getFilenameForGame(game: NflGame) {
+  return `${game.season}-${game.week.replace(/\s+/g, '')}-${game.awayTeam}-at-${game.homeTeam}.mp4`
+}
+
+export class AuthError extends Error {}
+export class LoadingError extends Error {}

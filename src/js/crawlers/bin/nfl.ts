@@ -23,7 +23,14 @@ async function main() {
     throw new Error('Please provide NFL_YT_DLP_EXECUTABLE environment variable')
   }
 
-  await runNflCrawl({username, password, pathToSavedGames, userDataDir, ytDlpExecutable})
+  await runNflCrawl({
+    username,
+    password,
+    pathToSavedGames,
+    userDataDir,
+    ytDlpExecutable,
+    targetResolution: '1080p',
+  })
 }
 
 main().catch(err => {
