@@ -1,3 +1,4 @@
+process.env.DEBUG = 'nfl:*'
 import {runNflCrawl} from '../src/nfl/nfl'
 
 async function main() {
