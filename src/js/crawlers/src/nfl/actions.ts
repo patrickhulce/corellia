@@ -21,28 +21,62 @@ import fs from 'fs'
 const log = createLogger('nfl:browser-actions')
 const noop = () => {}
 
-export async function waitForAuthState(
-  page: Page,
-  options: NflMainOptions,
-): Promise<{isLoggedIn: boolean}> {
-  log('wait for auth state')
-  const $signIn = locators.locateSignIn(page)
-  const $profile = locators.locateMyProfile(page)
-
-  try {
-    await Promise.race([
-      $signIn.waitFor({state: 'visible'}).catch(noop),
-      $profile.waitFor({state: 'visible'}).catch(noop),
-    ])
-  } catch (err) {
-    log('auth state timeout')
-    throw new LoadingError('Failed to determine auth state')
-  }
-
-  return {isLoggedIn: await $profile.isVisible()}
+interface WaitForAuthStateOptions extends NflMainOptions {
+  retryMethod?: () => Promise<void> | 'reload'
+  maxRetries?: number
 }
 
-export async function assertAuthState(page: Page, options: NflMainOptions) {
+export async function waitForAuthState(
+  page: Page,
+  options: WaitForAuthStateOptions,
+): Promise<{isLoggedIn: boolean}> {
+  const {retryMethod = 'reload', maxRetries = 0} = options
+
+  async function wait() {
+    log('wait for auth state')
+    const $signIn = locators.locateSignIn(page)
+    const $profile = locators.locateMyProfile(page)
+
+    try {
+      await Promise.race([
+        $signIn.waitFor({state: 'visible'}).catch(noop),
+        $profile.waitFor({state: 'visible'}).catch(noop),
+      ])
+    } catch (err) {
+      log('auth state timeout')
+      throw new LoadingError('Failed to determine auth state')
+    }
+
+    return {isLoggedIn: await $profile.isVisible()}
+  }
+
+  let attempts = 0
+  while (attempts <= maxRetries) {
+    try {
+      if (attempts > 0) {
+        if (retryMethod === 'reload') {
+          log('attempting reload page')
+          await page.reload({waitUntil: 'domcontentloaded'})
+        } else {
+          log('attempting retry method')
+          await retryMethod()
+        }
+      }
+
+      return await wait()
+    } catch (err) {
+      log(`auth state error: ${err}`)
+      attempts++
+
+      if (!(err instanceof LoadingError)) throw err
+      if (attempts > maxRetries) throw err
+    }
+  }
+
+  throw new LoadingError('Failed to determine auth state')
+}
+
+export async function assertAuthState(page: Page, options: WaitForAuthStateOptions) {
   const {isLoggedIn} = await waitForAuthState(page, options)
   if (!isLoggedIn) throw new AuthError('Page requires authentication')
 }
@@ -124,7 +158,7 @@ export async function logIn(page: Page, options: NflMainOptions) {
 export async function navigateToReplays(page: Page, options: NflMainOptions): Promise<void> {
   log(`navigate to replays page`)
   await page.goto(locators.getReplaysUrl(), {waitUntil: 'domcontentloaded'})
-  await assertAuthState(page, options)
+  await assertAuthState(page, {...options, maxRetries: 1})
 }
 
 export async function navigateToWeekReplays(
@@ -136,7 +170,7 @@ export async function navigateToWeekReplays(
   log(`navigate to week replays: ${season} - ${week}`)
   await page.goto(locators.getWeekUrl(season, week))
   await page.waitForSelector(`text="Replay ${week}"`)
-  await assertAuthState(page, options)
+  await assertAuthState(page, {...options, maxRetries: 1})
 }
 
 export async function navigateToGame(
