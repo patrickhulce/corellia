@@ -39,6 +39,7 @@ export async function waitForAuthState(
 
     try {
       await Promise.race([
+        // Catch errors to prevent rejection
         $signIn.waitFor({state: 'visible'}).catch(noop),
         $profile.waitFor({state: 'visible'}).catch(noop),
       ])
@@ -47,7 +48,15 @@ export async function waitForAuthState(
       throw new LoadingError('Failed to determine auth state')
     }
 
-    return {isLoggedIn: await $profile.isVisible()}
+    const isLoggedIn = await $profile.isVisible()
+    const isNotLoggedIn = await $signIn.isVisible()
+
+    if (!isLoggedIn && !isNotLoggedIn) {
+      // Case where both timed out but we caught the errors.
+      throw new LoadingError('Failed to determine auth state')
+    }
+
+    return {isLoggedIn}
   }
 
   let attempts = 0
