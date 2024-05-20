@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import {chromium} from 'playwright'
 import createLogger from 'debug'
@@ -28,9 +29,13 @@ function loadState(options: NflMainOptions): NflCrawlState {
 }
 
 export async function runNflCrawl(options: NflMainOptions) {
+  const executablePath =
+    os.platform() === 'win32'
+      ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+      : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   const browser = await chromium.launch({
     headless: false,
-    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    executablePath,
   })
 
   const context = await browser.newContext({
