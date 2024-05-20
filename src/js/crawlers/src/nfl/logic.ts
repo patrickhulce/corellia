@@ -1,13 +1,5 @@
 import * as _ from 'lodash'
-import {
-  NflGame,
-  NflGameSave,
-  NflMainOptions,
-  SEASONS,
-  WEEKS,
-  Week,
-  getFilenameForGame,
-} from './types'
+import {NflGame, NflGameSave, NflMainOptions, SEASONS, WEEKS, Week} from './types'
 
 export function computeLastSavedWeek(savedGames: NflGameSave[]): {season: string; week: Week} {
   const savedGamesBySeason = savedGames.reduce((acc, game) => {
@@ -30,8 +22,8 @@ export function computeNextGameToDownload(
   savedGames: NflGameSave[],
   availableGames: NflGame[],
 ): NflGame | undefined {
-  const savedGameFiles = new Set(savedGames.map(game => game.videoFilename))
-  return availableGames.find(game => !savedGameFiles.has(getFilenameForGame(game)))
+  const savedGameKeys = new Set(savedGames.map(getGameKey))
+  return availableGames.find(game => !savedGameKeys.has(getGameKey(game)))
 }
 
 export function computeNextWeekToDownload(currentWeek: {season: string; week: Week}): {
@@ -65,4 +57,8 @@ export function computeVideoStreamToUse(
 export function hasDownloadedEveryGame(savedGames: NflGameSave[]): boolean {
   // FIXME: This isn't actually true and we rely on `break` in the code, but it gets the intent across.
   return savedGames.length === SEASONS.length * WEEKS.length * 16
+}
+
+export function getGameKey(game: NflGame): string {
+  return `${game.season}-${game.week}-${game.awayTeam}-at-${game.homeTeam}`
 }
