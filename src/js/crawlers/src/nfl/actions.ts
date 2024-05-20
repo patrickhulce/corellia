@@ -39,7 +39,7 @@ export async function waitForAuthState(
 
     try {
       await Promise.race([
-        // Catch errors to prevent rejection
+        // Catch errors to prevent unhandled promise rejections.
         $signIn.waitFor({state: 'visible'}).catch(noop),
         $profile.waitFor({state: 'visible'}).catch(noop),
       ])
@@ -220,6 +220,12 @@ export async function downloadAll22(
 
   log(`extract all-22 m3u8 master: ${gameDisplay}`)
   const m3u8 = await extractors.extractAll22VideoM3u8(page, options)
+  if (!m3u8) {
+    log(`no all-22 m3u8 found: ${gameDisplay}`)
+    await markGameAsUnavailable(page, game, options)
+    return
+  }
+
   const streamUrl = computeVideoStreamToUse(m3u8.entries, options)
   if (!streamUrl) {
     log(`no suitable stream found at desired resolution, skipping`)
