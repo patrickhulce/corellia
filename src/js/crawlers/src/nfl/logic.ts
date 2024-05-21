@@ -1,21 +1,47 @@
 import * as _ from 'lodash'
 import {NflGame, NflGameSave, NflMainOptions, SEASONS, WEEKS, Week} from './types'
+import {BYE_WEEKS} from './bye-weeks'
+import createLogger from 'debug'
+
+const log = createLogger('nfl:logic')
 
 export function computeLastSavedWeek(savedGames: NflGameSave[]): {season: string; week: Week} {
-  const savedGamesBySeason = savedGames.reduce((acc, game) => {
-    if (!acc[game.season]) {
-      acc[game.season] = []
+  const savedGamesBySeasonByWeek = new Map<string, Map<Week, NflGameSave[]>>()
+  for (const game of savedGames) {
+    const bySeason = savedGamesBySeasonByWeek.get(game.season) || new Map<Week, NflGameSave[]>()
+    const byWeek = bySeason.get(game.week) || []
+    byWeek.push(game)
+    bySeason.set(game.week, byWeek)
+    savedGamesBySeasonByWeek.set(game.season, bySeason)
+  }
+
+  // First, compute the number of missing games for each week using bye week data.
+  const missingGameCounts = new Array<[string, Week, number]>()
+  for (const season of SEASONS) {
+    for (const week of WEEKS) {
+      const byeWeekEntry = BYE_WEEKS.find(b => b.season === season && b.week === week)
+      const byeWeeks = byeWeekEntry ? byeWeekEntry.byes : 0
+
+      const expected = 16 - byeWeeks / 2
+      const actual = (savedGamesBySeasonByWeek.get(season)?.get(week) || []).length
+
+      missingGameCounts.push([season, week, expected - actual])
     }
-    acc[game.season].push(game)
-    return acc
-  }, {} as Record<string, NflGame[]>)
+  }
 
-  const seasons = Object.keys(savedGamesBySeason)
-  const seasonWithFewestGames = _.minBy(seasons, s => savedGamesBySeason[s].length) || SEASONS[0]
-  const gamesOfSeason = savedGamesBySeason[seasonWithFewestGames] || []
-  const latestWeek = _.maxBy(gamesOfSeason, g => WEEKS.indexOf(g.week))?.week || Week.Week1
+  // Next, find the weeks with missing games.
+  const missingWeeks = missingGameCounts.filter(([_, __, missingGames]) => missingGames > 0)
 
-  return {season: seasonWithFewestGames, week: latestWeek}
+  // Next, use the earliest week in the latest season.
+  const [season, week, missing] =
+    _.minBy(missingWeeks, ([season, week]) => [-parseInt(season, 10), week]) || []
+
+  if (!season || !week) {
+    return {season: SEASONS[0], week: Week.Week1}
+  }
+
+  log(`resume ${season} ${week} (${missing} missing games)`)
+  return {season, week}
 }
 
 export function computeNextGameToDownload(
