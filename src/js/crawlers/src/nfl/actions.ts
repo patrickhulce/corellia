@@ -180,6 +180,8 @@ export async function navigateToWeekReplays(
   await page.goto(locators.getWeekUrl(season, week))
   await page.waitForSelector(`text="Replay ${week}"`)
   await assertAuthState(page, {...options, maxRetries: 1})
+  await page.waitForSelector(`text="Replay ${week}"`)
+  log(`navigated to week replays: ${season} - ${week}`)
 }
 
 export async function navigateToGame(
@@ -212,6 +214,7 @@ export async function downloadAll22(
 
   const availableVideos = await extractors.extractAvailableVideos(page)
   const all22Video = availableVideos.find(v => v.type === VideoType.All22)
+  log(`${availableVideos.length} videos available for ${gameDisplay}`)
   if (!all22Video) {
     log(`no all-22 video available: ${gameDisplay}`)
     await markGameAsUnavailable(page, game, options)

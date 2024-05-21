@@ -59,8 +59,10 @@ export async function runNflCrawl(options: NflMainOptions) {
 
     const availableGameLocators = await extractors.extractAvailableGames(page)
     const availableGames = availableGameLocators.map(({game}) => game)
+    log(`extracted ${availableGames.length} available games from ${state.week}`)
     const nextGame = computeNextGameToDownload(state.savedGames, availableGames)
     if (!nextGame) {
+      log(`no more games to download for ${state.week}, moving to next week`)
       const nextWeek = computeNextWeekToDownload({season: state.season, week: state.week})
       state = {...state, ...nextWeek}
       continue

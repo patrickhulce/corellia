@@ -1,12 +1,5 @@
 import {Locator, Page} from 'playwright'
-import {
-  NflGame,
-  NflMainOptions,
-  VideoType,
-  Week,
-  createNflGameSave,
-  getUrlValueFromWeek,
-} from './types'
+import {NflGame, NflMainOptions, VideoType} from './types'
 import {
   getWeekFromUrl,
   isVideoSelectorEnabled,
@@ -33,6 +26,9 @@ export async function extractAvailableGames(
   const url = page.url()
   const {season, week} = getWeekFromUrl(url)
   const gameCards = await locateGameCard(page)
+
+  log(`extracting games for ${season} ${week}`)
+  await gameCards.waitFor({state: 'visible'})
 
   return Promise.all(
     (await gameCards.all()).map(async gameCard => {
