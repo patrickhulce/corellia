@@ -10,7 +10,7 @@ import {selectVideoType, waitForVideoToSelect} from './actions'
 import {parseM3U8} from './m3u8'
 import createLogger from 'debug'
 
-const log = createLogger('nfl:browser-actions')
+const log = createLogger('nfl:extractors')
 
 export async function extractVideoDuration(videoPlayer: Locator): Promise<string> {
   const text = await videoPlayer.textContent()
@@ -28,7 +28,7 @@ export async function extractAvailableGames(
   const gameCards = await locateGameCard(page)
 
   log(`extracting games for ${season} ${week}`)
-  await gameCards.waitFor({state: 'visible'})
+  await gameCards.first().waitFor({state: 'visible'})
 
   return Promise.all(
     (await gameCards.all()).map(async gameCard => {
@@ -43,12 +43,19 @@ export async function extractAvailableGames(
 export async function extractAvailableVideos(
   page: Page,
 ): Promise<Array<{type: VideoType; selected: boolean; locator: Locator}>> {
-  return Promise.all(
+  const videos = await Promise.all(
     Object.values(VideoType).map(async type => {
       const $selector = await locateVideoSelector(page, type)
-      return {type, selected: await isVideoSelectorEnabled($selector), locator: $selector}
+      return {
+        type,
+        selected: await isVideoSelectorEnabled($selector),
+        locator: $selector,
+        isPresent: (await $selector.count()) > 0,
+      }
     }),
   )
+
+  return videos.filter(v => v.isPresent)
 }
 
 export async function extractVideoM3u8(
