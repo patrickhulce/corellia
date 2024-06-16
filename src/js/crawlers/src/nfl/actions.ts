@@ -117,7 +117,7 @@ export async function waitForVideoToSelect(
     if (videoType === selectedVideo.type) return
 
     throw new Error(`Wrong video selected. Expected: ${videoType}, got: ${selectedVideo.type}`)
-  })
+  }, 15_000)
 }
 
 export async function waitForVideoToPlay(
@@ -212,6 +212,8 @@ export async function downloadVideo(
 ): Promise<void> {
   const videoType = options.targetVideoType
   const gameDisplay = `${game.week} ${game.awayTeam} @ ${game.homeTeam}`
+
+  await waitForVideoToSelect(page, VideoType.Any, options)
 
   const availableVideos = await extractors.extractAvailableVideos(page)
   const targetVideo = availableVideos.find(v => v.type === videoType)
