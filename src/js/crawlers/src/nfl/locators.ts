@@ -53,7 +53,9 @@ export function getReplaysUrl(): string {
 }
 
 export function getGameUrl(game: NflGame): string {
-  const teams = `${game.awayTeam.toLowerCase()}-at-${game.homeTeam.toLowerCase()}`
+  const awayTeam = game.awayTeam.toLowerCase().replace(/ /g, '-')
+  const homeTeam = game.homeTeam.toLowerCase().replace(/ /g, '-')
+  const teams = `${awayTeam}-at-${homeTeam}`
   const time = `${game.season}-${getUrlValueFromWeek(game.week)}`
   return `https://www.nfl.com/plus/games/${teams}-${time}`
 }
