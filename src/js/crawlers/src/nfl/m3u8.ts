@@ -11,7 +11,7 @@ export function parseM3U8(m3u8Content: string): {resolution: string; url: string
   })
 }
 
-export async function downloadVideo(m3u8url: string, output: string, ytDlpExecutable: string) {
+export async function downloadVideoFile(m3u8url: string, output: string, ytDlpExecutable: string) {
   const args = [m3u8url, '-o', output]
 
   console.log('Running yt-dlp with args:', args)

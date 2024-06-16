@@ -51,17 +51,17 @@ export async function extractAvailableVideos(
   )
 }
 
-export async function extractAll22VideoM3u8(
+export async function extractVideoM3u8(
   page: Page,
   options: NflMainOptions,
 ): Promise<
   {url: string; content: string; entries: Array<{url: string; resolution: string}>} | undefined
 > {
-  await waitForVideoToSelect(page, VideoType.Any, options)
-
   try {
+    await waitForVideoToSelect(page, VideoType.Any, options)
+
     const [_, m3u8response] = await Promise.all([
-      selectVideoType(page, VideoType.All22, options),
+      selectVideoType(page, options.targetVideoType, options),
       page.waitForResponse(response => new URL(response.url()).pathname.endsWith('master.m3u8')),
     ])
 
@@ -71,11 +71,7 @@ export async function extractAll22VideoM3u8(
     return {url: m3u8response.url(), content, entries: streams}
   } catch (err) {
     log(`failed to extract all-22 m3u8: ${err}`)
-    log('retry with condensed game')
-    await selectVideoType(page, VideoType.CondensedGame, options).catch(() => {
-      throw err
-    })
-    log('condensed game succeeded, All-22 is not available for this game')
+    log('All-22 is not available for this game')
     return undefined
   }
 }

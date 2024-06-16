@@ -7,6 +7,7 @@ export interface NflMainOptions {
   pathToSavedGames: string
 
   targetResolution: '1080p' | '720p'
+  targetVideoType: VideoType
 }
 
 export interface NflCrawlState {

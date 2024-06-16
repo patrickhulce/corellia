@@ -14,7 +14,7 @@ import {
 } from './types'
 import waitForExpect from 'wait-for-expect'
 import {computeVideoStreamToUse} from './logic'
-import {downloadVideo} from './m3u8'
+import {downloadVideoFile} from './m3u8'
 import path from 'path'
 import fs from 'fs'
 
@@ -205,26 +205,27 @@ export async function selectVideoType(
   await waitForVideoToSelect(page, videoType, options)
 }
 
-export async function downloadAll22(
+export async function downloadVideo(
   page: Page,
   game: NflGame,
   options: NflMainOptions,
 ): Promise<void> {
+  const videoType = options.targetVideoType
   const gameDisplay = `${game.week} ${game.awayTeam} @ ${game.homeTeam}`
 
   const availableVideos = await extractors.extractAvailableVideos(page)
-  const all22Video = availableVideos.find(v => v.type === VideoType.All22)
+  const targetVideo = availableVideos.find(v => v.type === videoType)
   log(`${availableVideos.length} videos available for ${gameDisplay}`)
-  if (!all22Video) {
-    log(`no all-22 video available: ${gameDisplay}`)
+  if (!targetVideo) {
+    log(`no ${videoType} video available: ${gameDisplay}`)
     await markGameAsUnavailable(page, game, options)
     return
   }
 
-  log(`extract all-22 m3u8 master: ${gameDisplay}`)
-  const m3u8 = await extractors.extractAll22VideoM3u8(page, options)
+  log(`extract ${videoType} m3u8 master: ${gameDisplay}`)
+  const m3u8 = await extractors.extractVideoM3u8(page, options)
   if (!m3u8) {
-    log(`no all-22 m3u8 found: ${gameDisplay}`)
+    log(`no ${videoType} m3u8 found: ${gameDisplay}`)
     await markGameAsUnavailable(page, game, options)
     return
   }
@@ -241,7 +242,7 @@ export async function downloadAll22(
   const jsonPath = videoPath.replace('.mp4', '.json')
 
   if (fs.existsSync(jsonPath)) {
-    log(`metadata exists, skipping download of all-22 stream: ${gameDisplay}`)
+    log(`metadata exists, skipping download of ${videoType} stream: ${gameDisplay}`)
     return
   }
 
@@ -251,7 +252,7 @@ export async function downloadAll22(
   }
 
   log(`download all-22 stream: ${gameDisplay}`)
-  await downloadVideo(streamUrl, videoPath, options.ytDlpExecutable)
+  await downloadVideoFile(streamUrl, videoPath, options.ytDlpExecutable)
   fs.writeFileSync(jsonPath, JSON.stringify(gameSave, null, 2))
   log(`downloaded complete: ${gameDisplay}`)
 }

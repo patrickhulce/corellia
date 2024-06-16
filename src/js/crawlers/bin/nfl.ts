@@ -1,5 +1,6 @@
 process.env.DEBUG = 'nfl:*'
 import {runNflCrawl} from '../src/nfl/nfl'
+import {VideoType} from '../src/nfl/types'
 
 async function main() {
   const username = process.env.NFL_USERNAME
@@ -31,6 +32,7 @@ async function main() {
     userDataDir,
     ytDlpExecutable,
     targetResolution: '1080p',
+    targetVideoType: VideoType.CondensedGame,
   })
 }
 

@@ -5,7 +5,7 @@ import {chromium} from 'playwright'
 import createLogger from 'debug'
 import * as extractors from './extractors'
 import {NflMainOptions, NflCrawlState, NflGameSave} from './types'
-import {downloadAll22, logIn, navigateToGame, navigateToWeekReplays} from './actions'
+import {downloadVideo, logIn, navigateToGame, navigateToWeekReplays} from './actions'
 import {
   computeLastSavedWeek,
   computeNextGameToDownload,
@@ -69,7 +69,7 @@ export async function runNflCrawl(options: NflMainOptions) {
     }
 
     await navigateToGame(page, nextGame, options)
-    await downloadAll22(page, nextGame, options)
+    await downloadVideo(page, nextGame, options)
     state = loadState(options)
   }
 
