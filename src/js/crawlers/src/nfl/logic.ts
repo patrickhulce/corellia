@@ -31,10 +31,12 @@ export function computeLastSavedWeek(savedGames: NflGameSave[]): {season: string
 
   // Next, find the weeks with missing games.
   const missingWeeks = missingGameCounts.filter(([_, __, missingGames]) => missingGames > 0)
+  const latestSeason = _.maxBy(missingWeeks, ([season]) => parseInt(season, 10))?.[0]
+  const missingWeeksInLatestSeason = missingWeeks.filter(([season]) => season === latestSeason)
 
   // Next, use the earliest week in the latest season.
   const [season, week, missing] =
-    _.minBy(missingWeeks, ([season, week]) => [-parseInt(season, 10), week]) || []
+    _.minBy(missingWeeksInLatestSeason, ([__, week]) => WEEKS.indexOf(week)) || []
 
   if (!season || !week) {
     return {season: SEASONS[0], week: Week.Week1}
