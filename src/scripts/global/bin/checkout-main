@@ -24,6 +24,8 @@ else
     exit 1
 fi
 
+git pull
+
 # Delete the old branch
 if [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
     git branch -D "$current_branch"
