@@ -5,7 +5,13 @@ import {chromium} from 'playwright'
 import createLogger from 'debug'
 import * as extractors from './extractors'
 import {NflMainOptions, NflCrawlState, NflGameSave} from './types'
-import {downloadVideo, logIn, navigateToGame, navigateToWeekReplays} from './actions'
+import {
+  downloadVideo,
+  logIn,
+  markGameAsUnavailable,
+  navigateToGame,
+  navigateToWeekReplays,
+} from './actions'
 import {
   computeLastSavedWeek,
   computeNextGameToDownload,
@@ -68,8 +74,16 @@ export async function runNflCrawl(options: NflMainOptions) {
       continue
     }
 
-    await navigateToGame(page, nextGame, options)
-    await downloadVideo(page, nextGame, options)
+    try {
+      await navigateToGame(page, nextGame, options)
+      await downloadVideo(page, nextGame, options)
+    } catch (err: any) {
+      const debugLabel = `${nextGame.awayTeam}@${nextGame.homeTeam} ${nextGame.week}`
+      const debugError = 'stack' in err ? err.stack : err
+      log(`error downloading game ${debugLabel}: ${debugError}`)
+      await markGameAsUnavailable(page, nextGame, options)
+    }
+
     state = loadState(options)
   }
 

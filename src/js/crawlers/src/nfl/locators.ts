@@ -40,6 +40,11 @@ export function locateVideoPlayer(page: Page): Locator {
   return page.getByLabel('Video Player')
 }
 
+export function locateVideoElements(page: Page): Locator {
+  const videoPlayer = page.locator('#video-container')
+  return videoPlayer.locator('video')
+}
+
 export function locateVideoSelector(page: Page, type: VideoType): Locator {
   return page.locator(`div:has(> div > div:text("${type}"))`)
 }

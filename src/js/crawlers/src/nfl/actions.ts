@@ -122,9 +122,26 @@ export async function waitForVideoToSelect(
 
 export async function waitForVideoToPlay(
   page: Page,
-  $videoSelector: Locator,
-  options: NflMainOptions,
-): Promise<void> {}
+  options: NflMainOptions & {assertTime?: (time: number) => void},
+): Promise<void> {
+  log(`wait for video to play`)
+  await waitForExpect(async () => {
+    const videoElements = await locators.locateVideoElements(page)
+    for (const videoLocator of await videoElements.all()) {
+      const $video = await videoLocator.elementHandle()
+      const currentTime = await page.evaluate(
+        el => (el as unknown as HTMLVideoElement).currentTime ?? 0,
+        $video,
+      )
+      if (currentTime > 3) {
+        if (options.assertTime) options.assertTime(currentTime)
+        return
+      }
+    }
+
+    throw new Error('No videos playing yet')
+  }, 15_000)
+}
 
 export async function logIn(page: Page, options: NflMainOptions) {
   log(`navigate to replays for auth check`)
@@ -149,7 +166,7 @@ export async function logIn(page: Page, options: NflMainOptions) {
   await waitForLoginPage(page)
 
   log(`fill username`)
-  await page.fill('input[type="email"]', options.username)
+  await page.fill('input[autocomplete="email"]', options.username)
   await page.click('text="Continue"')
 
   log(`fill password`)
@@ -253,7 +270,7 @@ export async function downloadVideo(
     fs.rmSync(videoPath)
   }
 
-  log(`download all-22 stream: ${gameDisplay}`)
+  log(`download ${videoType} stream: ${gameDisplay}`)
   await downloadVideoFile(streamUrl, videoPath, options.ytDlpExecutable)
   fs.writeFileSync(jsonPath, JSON.stringify(gameSave, null, 2))
   log(`downloaded complete: ${gameDisplay}`)

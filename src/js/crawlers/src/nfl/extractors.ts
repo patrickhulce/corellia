@@ -4,19 +4,41 @@ import {
   getWeekFromUrl,
   isVideoSelectorEnabled,
   locateGameCard,
+  locateVideoElements,
+  locateVideoPlayer,
   locateVideoSelector,
 } from './locators'
-import {selectVideoType, waitForVideoToSelect} from './actions'
+import {selectVideoType, waitForVideoToPlay, waitForVideoToSelect} from './actions'
 import {parseM3U8} from './m3u8'
 import createLogger from 'debug'
+import waitForExpect from 'wait-for-expect'
 
 const log = createLogger('nfl:extractors')
 
-export async function extractVideoDuration(videoPlayer: Locator): Promise<string> {
-  const text = await videoPlayer.textContent()
-  if (!text || !text.includes(' / ')) throw new Error(`Could not extract duration from: ${text}`)
-  const duration = text.match(/\/ (\d+:\d+:\d+)/)?.[1]
-  if (!duration) throw new Error(`Could not extract duration from: ${text}`)
+export async function extractVideoDurationInMinutes(page: Page): Promise<number | undefined> {
+  async function extract() {
+    const videoElements = locateVideoElements(page)
+    for (const videoElementLocator of await videoElements.all()) {
+      const videoElement = await videoElementLocator.elementHandle()
+      const duration = await page
+        .evaluate(el => (el as unknown as HTMLVideoElement).duration, videoElement)
+        .catch(() => undefined)
+      if (duration) {
+        return Math.round(duration / 60)
+      }
+    }
+
+    return undefined
+  }
+
+  let duration = await extract()
+  await waitForExpect(async () => {
+    duration = await extract()
+    if (duration === undefined) {
+      throw new Error('Video duration not available')
+    }
+  }, 15_000)
+
   return duration
 }
 
@@ -61,24 +83,46 @@ export async function extractAvailableVideos(
 export async function extractVideoM3u8(
   page: Page,
   options: NflMainOptions,
+  aux: {retries?: number} = {},
 ): Promise<
   {url: string; content: string; entries: Array<{url: string; resolution: string}>} | undefined
 > {
+  const videoType = options.targetVideoType
+  const {retries = 1} = aux
+
   try {
     await waitForVideoToSelect(page, VideoType.Any, options)
+    await page.waitForTimeout(5_000)
+    await waitForVideoToPlay(page, options)
 
     const [_, m3u8response] = await Promise.all([
-      selectVideoType(page, options.targetVideoType, options),
+      selectVideoType(page, videoType, options),
       page.waitForResponse(response => new URL(response.url()).pathname.endsWith('master.m3u8')),
     ])
+
+    const videoDuration = (await extractVideoDurationInMinutes(page)) ?? 0
+    log(`video duration: ${videoDuration} minutes`)
+    if (videoType === VideoType.CondensedGame && videoDuration > 90) {
+      if (retries === 0) {
+        log('condensed game should not be longer than 90 minutes, skipping')
+        return undefined
+      }
+
+      log('condensed game should not be longer than 90 minutes, retrying selection')
+      await selectVideoType(page, VideoType.FullGame, options)
+      await waitForVideoToPlay(page, options)
+      await page.waitForTimeout(15_000)
+
+      return extractVideoM3u8(page, options, {retries: retries - 1})
+    }
 
     const content = await m3u8response.text()
     const streams = parseM3U8(content)
 
     return {url: m3u8response.url(), content, entries: streams}
-  } catch (err) {
-    log(`failed to extract all-22 m3u8: ${err}`)
-    log('All-22 is not available for this game')
+  } catch (err: unknown) {
+    log(`failed to extract ${videoType} m3u8: ${(err as Error).stack}`)
+    log(`${videoType} is not available for this game`)
     return undefined
   }
 }
