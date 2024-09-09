@@ -9,6 +9,9 @@ RUN comfy --skip-prompt install --nvidia
 COPY ./snapshot.yaml /root/comfy/ComfyUI/snapshot.yaml
 RUN comfy node restore-snapshot /root/comfy/ComfyUI/snapshot.yaml
 
+COPY ./models /root/comfy/ComfyUI/model-scripts
+COPY ./.envrc /root/comfy/ComfyUI/.envrc
+
 EXPOSE 8188
 
 CMD [ "/usr/local/bin/comfy", "launch", "--", "--listen", "0.0.0.0"]
