@@ -24,4 +24,8 @@ download_model "ipadapter_sdxl_plus_vit_h.safetensors" "https://huggingface.co/h
 download_model "ipadapter_sdxl_plus_face_vit_h.safetensors" "https://huggingface.co/h94/IP-Adapter/resolve/018e402774aeeddd60609b4ecdb7e298259dc729/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors"
 
 MODEL_TYPE="loras"
-download_model "lora_sd15_detail_slider_v4.safetensors" "https://huggingface.co/nyaa314/loras/resolve/50d504833e9c53d663d15c5ac452fb7860195767/detail/detail_slider_v4.safetensors"
+download_model "lora_sd15_detail_slider_v4.safetensors" "https://civitai.com/api/download/models/62833?type=Model&format=SafeTensor"
+
+MODEL_TYPE="unet"
+download_model "iclight_sd15_fc.safetensors" "https://huggingface.co/lllyasviel/ic-light/resolve/main/iclight_sd15_fc.safetensors?download=true"
+download_model "iclight_sd15_fbc.safetensors" "https://huggingface.co/lllyasviel/ic-light/resolve/main/iclight_sd15_fbc.safetensors?download=true"
