@@ -7,7 +7,7 @@ set -euxo pipefail
 HOST_MODELS_DIR="/mnt/x/Comfy/models"
 HOST_WORKSPACE_DIR="/mnt/x/Comfy/workspace"
 DOCKER_BUILD_COMMAND="docker build -t comfy:latest ."
-DOCKER_RUN_COMMAND="docker run --name comfy_service -d -p 8188:8188 -v $HOST_MODELS_DIR:/root/comfy/ComfyUI/models -v $HOST_WORKSPACE_DIR:/workspace comfy:latest"
+DOCKER_RUN_COMMAND="docker run --name comfy_service -d -p 8188:8188 -p 8080:8080 -v $HOST_MODELS_DIR:/root/comfy/ComfyUI/models -v $HOST_WORKSPACE_DIR:/workspace comfy:latest"
 
 wsl -d Ubuntu -e bash -c "$DOCKER_BUILD_COMMAND"
 wsl -d Ubuntu -e bash -c "docker remove -f comfy_service" || true

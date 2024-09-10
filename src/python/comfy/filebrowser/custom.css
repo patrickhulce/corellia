@@ -1,0 +1,14 @@
+:root.dark {
+    --background: rgb(35, 35, 35);
+    --surfacePrimary: rgb(45, 45, 45);
+    --surfaceSecondary: rgb(65, 65, 65);
+}
+
+header > img {
+    margin-left: 0.2em;
+    margin-right: 1.5em;
+}
+
+.file-icons [data-dir=true] i {
+    color: var(--textPrimary);
+}

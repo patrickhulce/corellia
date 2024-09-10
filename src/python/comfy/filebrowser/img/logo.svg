@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="0 0 679 679"
+    xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="greenGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0" style="stop-color:#6d7f7b;stop-opacity:1"/>
+            <stop offset="1" style="stop-color:#131e27;stop-opacity:1"/>
+        </linearGradient>
+        <radialGradient id="highlightGradient" cx="50%" cy="20%" r="40%">
+            <stop offset="0" style="stop-color:rgba(255, 255, 255, 0.3); stop-opacity:1"/>
+            <stop offset="1" style="stop-color:rgba(255, 255, 255, 0); stop-opacity:0"/>
+        </radialGradient>
+        <linearGradient id="gradient-1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0" style="stop-color: rgb(132, 224, 135);"/>
+            <stop offset="1" style="stop-color: rgb(8, 59, 13);"/>
+        </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="679" height="679" rx="100" ry="100" fill="url(#greenGradient)"/>
+    <circle cx="340" cy="100" r="340" fill="url(#highlightGradient)" style=""/>
+
+    <text style="fill: url('#gradient-1'); font-family: 'Arial Black'; font-size: 684.1px; paint-order: fill; stroke: rgb(132, 224, 135); stroke-width: 10px; white-space: pre;" x="77.356" y="584.395">C</text>
+</svg>
