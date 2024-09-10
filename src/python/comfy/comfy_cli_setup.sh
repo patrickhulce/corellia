@@ -2,6 +2,8 @@
 
 set -euxo pipefail
 
+# This script is to be run inside the comfy docker container on setup
+
 comfy node install ComfyUI-PhotoMaker-Plus
 comfy node install ComfyUI_IPAdapter_plus
 comfy node install ComfyUI-post-processing-nodes
