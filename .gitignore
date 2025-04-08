@@ -1,4 +1,5 @@
 .data
+.env
 .envrc
 .vscode
 __pycache__
@@ -7,3 +8,11 @@ node_modules
 report.txt
 report.txt.csv
 *.bak
+
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
