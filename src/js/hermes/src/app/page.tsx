@@ -1,83 +1,62 @@
-import Image from 'next/image'
+import {Button} from '@/components/ui/button'
+import Link from 'next/link'
+import {BarChartIcon, DownloadCloudIcon, UserCogIcon} from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center gap-16 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
-      <main className="row-start-2 flex flex-col items-center gap-[32px] sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-center font-[family-name:var(--font-geist-mono)] text-sm/6 sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{' '}
-            <code className="rounded bg-black/[.05] px-1 py-0.5 font-[family-name:var(--font-geist-mono)] font-semibold dark:bg-white/[.06]">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">Save and see your changes instantly.</li>
-        </ol>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-8">
+      <div className="mb-12 text-center">
+        <h1 className="mb-4 text-4xl font-bold text-white">Welcome to Hermes</h1>
+        <p className="text-xl text-slate-300">Choose an option to get started</p>
+      </div>
 
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <a
-            className="bg-foreground text-background flex h-10 items-center justify-center gap-2 rounded-full border border-solid border-transparent px-4 text-sm font-medium transition-colors hover:bg-[#383838] sm:h-12 sm:w-auto sm:px-5 sm:text-base dark:hover:bg-[#ccc]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="flex h-10 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-4 text-sm font-medium transition-colors hover:border-transparent hover:bg-[#f2f2f2] sm:h-12 sm:w-auto sm:px-5 sm:text-base md:w-[158px] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="grid w-full max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
+        {/* Authenticate Card */}
+        <div className="flex flex-col items-center rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur-sm transition-all hover:bg-white/15">
+          <div className="mb-6 text-white">
+            <UserCogIcon size={96} strokeWidth={1.5} />
+          </div>
+          <h2 className="mb-4 text-2xl font-semibold text-white">Configure</h2>
+          <p className="mb-6 text-center text-slate-300">
+            Connect your accounts to access your data
+          </p>
+          <Button className="mt-auto w-full bg-blue-600 hover:bg-blue-700" asChild>
+            <Link href="/auth">Connect Accounts</Link>
+          </Button>
         </div>
-      </main>
-      <footer className="row-start-3 flex flex-wrap items-center justify-center gap-[24px]">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
-          Go to nextjs.org →
-        </a>
+
+        {/* Ingest Card */}
+        <div className="flex flex-col items-center rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur-sm transition-all hover:bg-white/15">
+          <div className="mb-6 text-white">
+            <DownloadCloudIcon size={96} strokeWidth={1.5} />
+          </div>
+          <h2 className="mb-4 text-2xl font-semibold text-white">Ingest</h2>
+          <p className="mb-6 text-center text-slate-300">
+            Download your data from your connected accounts
+          </p>
+          <Button className="mt-auto w-full bg-green-600 hover:bg-green-700" asChild>
+            <Link href="/ingest">Download Data</Link>
+          </Button>
+        </div>
+
+        {/* View Card */}
+        <div className="flex flex-col items-center rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur-sm transition-all hover:bg-white/15">
+          <div className="mb-6 text-white">
+            <BarChartIcon size={96} strokeWidth={1.5} />
+          </div>
+          <h2 className="mb-4 text-2xl font-semibold text-white">View</h2>
+          <p className="mb-6 text-center text-slate-300">
+            Explore and visualize your ingested data
+          </p>
+          <Button className="mt-auto w-full bg-purple-600 hover:bg-purple-700" asChild>
+            <Link href="/view">Explore</Link>
+          </Button>
+        </div>
+      </div>
+
+      <footer className="mt-16 text-sm text-slate-400">
+        © 2025 Hermes. All rights reserved.
       </footer>
-    </div>
+    </main>
   )
 }

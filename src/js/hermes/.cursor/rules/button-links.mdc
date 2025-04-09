@@ -1,0 +1,19 @@
+---
+description: When creating button links
+globs: **/*.tsx
+---
+Set the asChild parameter and nest the link component.
+
+
+DO
+
+<Button asChild>
+  <Link href="/login">Login</Link>
+</Button>
+
+
+DO NOT
+
+<Link href="/login">
+    <Button>Login</Button>
+</Link>
