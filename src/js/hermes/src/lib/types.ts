@@ -1,3 +1,5 @@
+import {capitalize} from './words'
+
 export interface Configuration {
   browser: BrowserConfiguration
   accounts: ConnectedAccount[]
@@ -37,4 +39,14 @@ export interface BrowserConfiguration {
   headless: boolean
   executablePath: string
   userDataDir: string
+}
+
+export function getLabelForIngestionSourceType(sourceType: IngestionSourceType) {
+  switch (sourceType) {
+    case IngestionSourceType.GMAIL:
+      return 'GMail'
+    default: {
+      return capitalize(sourceType)
+    }
+  }
 }

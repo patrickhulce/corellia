@@ -1,4 +1,5 @@
 import {Button} from '@/components/ui/button'
+import {Card, CardContent, CardFooter, CardHeader, CardTitle} from '@/components/ui/card'
 import Link from 'next/link'
 import {BarChartIcon, DownloadCloudIcon, UserCogIcon} from 'lucide-react'
 
@@ -12,42 +13,60 @@ export default function Home() {
 
       <div className="grid w-full max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
         {/* Configure Card */}
-        <div className="border-primary/20 bg-primary/10 hover:bg-primary/15 flex flex-col items-center rounded-xl border p-8 backdrop-blur-sm transition-all">
-          <div className="mb-6 ">
-            <UserCogIcon size={96} strokeWidth={1.5} />
-          </div>
-          <h2 className="mb-4 text-2xl font-semibold ">Configure</h2>
-          <p className="text-primary mb-6 text-center">Connect your accounts to access your data</p>
-          <Button className="mt-auto w-full bg-blue-600 hover:bg-blue-700" asChild>
-            <Link href="/configuration">Connect Accounts</Link>
-          </Button>
-        </div>
+        <Card className="backdrop-blur-sm transition-all">
+          <CardHeader className="text-center">
+            <div className="mb-6 flex justify-center">
+              <UserCogIcon size={96} strokeWidth={1.5} />
+            </div>
+            <CardTitle className="text-2xl">Configure</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-primary text-center">Connect your accounts to access your data</p>
+          </CardContent>
+          <CardFooter className="mt-auto">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700" asChild>
+              <Link href="/configuration">Connect Accounts</Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
         {/* Ingest Card */}
-        <div className="border-primary/20 bg-primary/10 hover:bg-primary/15 flex flex-col items-center rounded-xl border p-8 backdrop-blur-sm transition-all">
-          <div className="mb-6 ">
-            <DownloadCloudIcon size={96} strokeWidth={1.5} />
-          </div>
-          <h2 className="mb-4 text-2xl font-semibold ">Ingest</h2>
-          <p className="text-primary mb-6 text-center">
-            Download your data from your connected accounts
-          </p>
-          <Button className="mt-auto w-full bg-green-600 hover:bg-green-700" asChild>
-            <Link href="/ingest">Download Data</Link>
-          </Button>
-        </div>
+        <Card className="backdrop-blur-sm transition-all">
+          <CardHeader className="text-center">
+            <div className="mb-6 flex justify-center">
+              <DownloadCloudIcon size={96} strokeWidth={1.5} />
+            </div>
+            <CardTitle className="text-2xl">Ingest</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-primary text-center">
+              Download your data from your connected accounts
+            </p>
+          </CardContent>
+          <CardFooter className="mt-auto">
+            <Button className="w-full bg-green-600 hover:bg-green-700" asChild>
+              <Link href="/ingest">Download Data</Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
         {/* View Card */}
-        <div className="border-primary/20 bg-primary/10 hover:bg-primary/15 flex flex-col items-center rounded-xl border p-8 backdrop-blur-sm transition-all">
-          <div className="mb-6 ">
-            <BarChartIcon size={96} strokeWidth={1.5} />
-          </div>
-          <h2 className="mb-4 text-2xl font-semibold ">View</h2>
-          <p className="text-primary mb-6 text-center">Explore and visualize your ingested data</p>
-          <Button className="mt-auto w-full bg-purple-600 hover:bg-purple-700" asChild>
-            <Link href="/view">Explore</Link>
-          </Button>
-        </div>
+        <Card className="backdrop-blur-sm transition-all">
+          <CardHeader className="text-center">
+            <div className="mb-6 flex justify-center">
+              <BarChartIcon size={96} strokeWidth={1.5} />
+            </div>
+            <CardTitle className="text-2xl">View</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-primary text-center">Explore and visualize your ingested data</p>
+          </CardContent>
+          <CardFooter className="mt-auto">
+            <Button className="w-full bg-purple-600 hover:bg-purple-700" asChild>
+              <Link href="/view">Explore</Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
 
       <footer className="text-primary mt-16 text-sm">© 2025 Hermes. All rights reserved.</footer>
