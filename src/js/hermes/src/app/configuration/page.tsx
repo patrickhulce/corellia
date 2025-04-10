@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import {Switch} from '@/components/ui/switch'
-import {PlusCircle, Trash2, Settings, User} from 'lucide-react'
+import {PlusCircle, Settings} from 'lucide-react'
 import Link from 'next/link'
 import {
   Configuration,
@@ -22,7 +22,7 @@ import {
   IngestionSourceType,
 } from '@/lib/types'
 import {AccountConfigCard} from '@/components/configuration/AccountConfigCard'
-import {capitalize} from '@/lib/words'
+import {BrandIcon} from '@/components/BrandIcon'
 
 // Mock initial configuration for demonstration
 const initialConfig: Configuration = {
@@ -50,7 +50,6 @@ export default function ConfigurationPage() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     config.accounts.length > 0 ? config.accounts[0].id : null,
   )
-  const [activeTab, setActiveTab] = useState<'account' | 'browser'>('account')
 
   const selectedAccount = config.accounts.find((account) => account.id === selectedAccountId)
 
@@ -66,16 +65,6 @@ export default function ConfigurationPage() {
     const updatedAccounts = [...config.accounts, newAccount]
     setConfig({...config, accounts: updatedAccounts})
     setSelectedAccountId(newAccount.id)
-    setActiveTab('account')
-  }
-
-  const handleDeleteAccount = (id: string) => {
-    const updatedAccounts = config.accounts.filter((account) => account.id !== id)
-    setConfig({...config, accounts: updatedAccounts})
-
-    if (selectedAccountId === id) {
-      setSelectedAccountId(updatedAccounts.length > 0 ? updatedAccounts[0].id : null)
-    }
   }
 
   const handleAccountChange = (field: keyof ConnectedAccount, value: string | boolean) => {
@@ -156,93 +145,47 @@ export default function ConfigurationPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               <Button
-                variant={activeTab === 'account' ? 'default' : 'outline'}
+                variant={selectedAccountId === null ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setActiveTab('account')}
-              >
-                <User className="mr-2 h-4 w-4" />
-                Accounts
-              </Button>
-              <Button
-                variant={activeTab === 'browser' ? 'default' : 'outline'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('browser')}
+                onClick={() => setSelectedAccountId(null)}
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Browser Settings
+                Global Settings
               </Button>
-            </CardContent>
-          </Card>
-
-          {activeTab === 'account' && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle>Connected Accounts</CardTitle>
-                <CardDescription>Select an account to configure</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {config.accounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className={`flex cursor-pointer items-center justify-between rounded-md p-2 ${
-                      selectedAccountId === account.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-secondary'
-                    }`}
-                    onClick={() => setSelectedAccountId(account.id)}
-                  >
-                    <div>
-                      <p className="font-medium">{capitalize(account.type)}</p>
-                      <p className="text-sm">{account.username || 'Not configured'}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteAccount(account.id)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" variant="outline" onClick={handleAddAccount}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Account
+              {config.accounts.map((account) => (
+                <Button
+                  key={account.id}
+                  className="w-full justify-start"
+                  variant={selectedAccountId === account.id ? 'default' : 'outline'}
+                  onClick={() => setSelectedAccountId(account.id)}
+                >
+                  <BrandIcon brand={account.type} className="mr-2 h-4 w-4" />
+                  <p className="text-sm">{account.username || 'Not configured'}</p>
                 </Button>
-              </CardFooter>
-            </Card>
-          )}
+              ))}
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full" variant="outline" onClick={handleAddAccount}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Account
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
 
         {/* Main Content */}
         <div className="md:col-span-3">
-          {activeTab === 'account' ? (
-            selectedAccount ? (
-              <AccountConfigCard
-                selectedAccount={selectedAccount}
-                handleAccountChange={handleAccountChange}
-                handleToggleIngestion={handleToggleIngestion}
-                handleSaveConfiguration={handleSaveConfiguration}
-              />
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <p className="text-muted-foreground mb-4">No account selected</p>
-                  <Button onClick={handleAddAccount}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Account
-                  </Button>
-                </CardContent>
-              </Card>
-            )
+          {selectedAccount ? (
+            <AccountConfigCard
+              selectedAccount={selectedAccount}
+              handleAccountChange={handleAccountChange}
+              handleToggleIngestion={handleToggleIngestion}
+              handleSaveConfiguration={handleSaveConfiguration}
+            />
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Browser Settings</CardTitle>
+                <CardTitle>Global Settings</CardTitle>
                 <CardDescription>Configure browser automation settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
