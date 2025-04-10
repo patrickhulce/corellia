@@ -1,0 +1,5 @@
+---
+description: When authoring JSX
+globs: **/*.tsx
+---
+Don't use explicit colors like `white` or `slate`, use the appropriate color scheme of the theme, e.g. primary, secondary, muted, accent
