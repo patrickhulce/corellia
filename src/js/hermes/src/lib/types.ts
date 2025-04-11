@@ -50,3 +50,22 @@ export function getLabelForIngestionSourceType(sourceType: IngestionSourceType) 
     }
   }
 }
+
+export function getAvailableIngestionTypes(accountType: ConnectedAccountType) {
+  switch (accountType) {
+    case ConnectedAccountType.GOOGLE:
+      return [
+        IngestionSourceType.GMAIL,
+        IngestionSourceType.GOOGLE_DRIVE,
+        IngestionSourceType.GOOGLE_MAPS,
+        IngestionSourceType.GOOGLE_CALENDAR,
+        IngestionSourceType.GOOGLE_PHOTOS,
+      ]
+    case ConnectedAccountType.TARGET:
+    case ConnectedAccountType.AMAZON:
+    case ConnectedAccountType.COSTCO:
+      return [IngestionSourceType.TRANSACTIONS]
+    default:
+      return []
+  }
+}

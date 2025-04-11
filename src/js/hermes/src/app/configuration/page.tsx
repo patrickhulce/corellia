@@ -21,7 +21,7 @@ import {
   ConnectedAccountType,
   IngestionSourceType,
 } from '@/lib/types'
-import {AccountConfigCard} from '@/components/configuration/AccountConfigCard'
+import {AccountConfigCard, NEW_ACCOUNT_ID} from '@/components/configuration/AccountConfigCard'
 import {BrandIcon} from '@/components/BrandIcon'
 
 // Mock initial configuration for demonstration
@@ -55,7 +55,7 @@ export default function ConfigurationPage() {
 
   const handleAddAccount = () => {
     const newAccount: ConnectedAccount = {
-      id: Date.now().toString(),
+      id: NEW_ACCOUNT_ID,
       type: ConnectedAccountType.GOOGLE,
       username: '',
       password: '',
@@ -141,7 +141,7 @@ export default function ConfigurationPage() {
         <div className="md:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle>Navigation</CardTitle>
+              <CardTitle>Connected Accounts</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button

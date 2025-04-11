@@ -15,10 +15,12 @@ import {Switch} from '@/components/ui/switch'
 import {
   ConnectedAccount,
   ConnectedAccountType,
+  getAvailableIngestionTypes,
   getLabelForIngestionSourceType,
   IngestionSourceType,
 } from '@/lib/types'
 import {capitalize} from '@/lib/words'
+import {BrandIcon} from '@/components/BrandIcon'
 
 interface AccountConfigCardProps {
   selectedAccount: ConnectedAccount
@@ -26,6 +28,8 @@ interface AccountConfigCardProps {
   handleToggleIngestion: (sourceType: IngestionSourceType) => void
   handleSaveConfiguration: () => void
 }
+
+export const NEW_ACCOUNT_ID = '__new-account__'
 
 export function AccountConfigCard({
   selectedAccount,
@@ -37,25 +41,6 @@ export function AccountConfigCard({
     return selectedAccount.ingestions.some((i) => i.sourceType === sourceType)
   }
 
-  const getAvailableIngestionTypes = (accountType: ConnectedAccountType) => {
-    switch (accountType) {
-      case ConnectedAccountType.GOOGLE:
-        return [
-          IngestionSourceType.GMAIL,
-          IngestionSourceType.GOOGLE_DRIVE,
-          IngestionSourceType.GOOGLE_MAPS,
-          IngestionSourceType.GOOGLE_CALENDAR,
-          IngestionSourceType.GOOGLE_PHOTOS,
-        ]
-      case ConnectedAccountType.TARGET:
-      case ConnectedAccountType.AMAZON:
-      case ConnectedAccountType.COSTCO:
-        return [IngestionSourceType.TRANSACTIONS]
-      default:
-        return []
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -64,21 +49,24 @@ export function AccountConfigCard({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="accountType">Account Type</Label>
-            <select
-              id="accountType"
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={selectedAccount.type}
-              onChange={(e) => handleAccountChange('type', e.target.value)}
-            >
-              {Object.values(ConnectedAccountType).map((type) => (
-                <option key={type} value={type}>
-                  {capitalize(type)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {selectedAccount.id === NEW_ACCOUNT_ID ? (
+            <div>
+              <Label className="mb-2 block">Account Type</Label>
+              <div className="flex flex-wrap gap-3">
+                {Object.values(ConnectedAccountType).map((type) => (
+                  <Button
+                    key={type}
+                    variant={selectedAccount.type === type ? 'default' : 'outline'}
+                    className="flex h-20 w-24 flex-col items-center justify-center p-2"
+                    onClick={() => handleAccountChange('type', type)}
+                  >
+                    <BrandIcon brand={type} className="mb-1 h-10 w-10" />
+                    <span className="text-xs">{capitalize(type)}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div>
             <Label htmlFor="username">Username</Label>
