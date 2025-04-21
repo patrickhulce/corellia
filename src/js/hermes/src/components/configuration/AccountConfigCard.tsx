@@ -21,42 +21,50 @@ import {
 } from '@/lib/types'
 import {capitalize} from '@/lib/words'
 import {BrandIcon} from '@/components/BrandIcon'
+import {useState} from 'react'
 
 interface AccountConfigCardProps {
-  selectedAccount: ConnectedAccount
-  handleAccountChange: (field: keyof ConnectedAccount, value: string | boolean) => void
-  handleToggleIngestion: (sourceType: IngestionSourceType) => void
-  handleSaveConfiguration: () => void
+  initialAccount: ConnectedAccount
+  onSave: (account: ConnectedAccount) => void
 }
 
-export const NEW_ACCOUNT_ID = '__new-account__'
+export const NEW_ACCOUNT_ID = 'new'
 
-export function AccountConfigCard({
-  selectedAccount,
-  handleAccountChange,
-  handleToggleIngestion,
-  handleSaveConfiguration,
-}: AccountConfigCardProps) {
+export function AccountConfigCard({initialAccount, onSave}: AccountConfigCardProps) {
+  const [account, setAccount] = useState<ConnectedAccount>(initialAccount)
+  const handleAccountChange = (field: keyof ConnectedAccount, value: string | boolean) => {
+    setAccount({...account, [field]: value})
+  }
+
+  const handleToggleIngestion = (sourceType: IngestionSourceType) => {
+    setAccount({
+      ...account,
+      ingestions: account.ingestions.some((i) => i.sourceType === sourceType)
+        ? account.ingestions.filter((i) => i.sourceType !== sourceType)
+        : [...account.ingestions, {sourceType, id: crypto.randomUUID()}],
+    })
+  }
+
   const isIngestionEnabled = (sourceType: IngestionSourceType) => {
-    return selectedAccount.ingestions.some((i) => i.sourceType === sourceType)
+    return account.ingestions.some((i) => i.sourceType === sourceType)
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Account Configuration</CardTitle>
-        <CardDescription>Configure your {capitalize(selectedAccount.type)} account</CardDescription>
+        <CardDescription>Configure your {capitalize(account.type)} account</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          {selectedAccount.id === NEW_ACCOUNT_ID ? (
+          {account.id === NEW_ACCOUNT_ID ? (
             <div>
               <Label className="mb-2 block">Account Type</Label>
               <div className="flex flex-wrap gap-3">
                 {Object.values(ConnectedAccountType).map((type) => (
                   <Button
                     key={type}
-                    variant={selectedAccount.type === type ? 'default' : 'outline'}
+                    variant={account.type === type ? 'default' : 'outline'}
                     className="flex h-20 w-24 flex-col items-center justify-center p-2"
                     onClick={() => handleAccountChange('type', type)}
                   >
@@ -72,7 +80,7 @@ export function AccountConfigCard({
             <Label htmlFor="username">Username</Label>
             <Input
               id="username"
-              value={selectedAccount.username}
+              value={account.username}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 handleAccountChange('username', e.target.value)
               }
@@ -85,7 +93,7 @@ export function AccountConfigCard({
             <Input
               id="password"
               type="password"
-              value={selectedAccount.password}
+              value={account.password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 handleAccountChange('password', e.target.value)
               }
@@ -101,7 +109,7 @@ export function AccountConfigCard({
           </p>
 
           <div className="space-y-2">
-            {getAvailableIngestionTypes(selectedAccount.type).map((sourceType) => (
+            {getAvailableIngestionTypes(account.type).map((sourceType) => (
               <div key={sourceType} className="flex items-center justify-between">
                 <Label htmlFor={`ingestion-${sourceType}`} className="flex-1">
                   {getLabelForIngestionSourceType(sourceType)}
@@ -117,7 +125,7 @@ export function AccountConfigCard({
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleSaveConfiguration}>Save Changes</Button>
+        <Button onClick={() => onSave(account)}>Save Changes</Button>
       </CardFooter>
     </Card>
   )
