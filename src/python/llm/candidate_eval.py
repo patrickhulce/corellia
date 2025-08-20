@@ -1,88 +1,93 @@
-import http.client
+import csv
+import getpass
 import json
+import os
 import time
-import typing
-import urllib.request
+from typing import Any
 
-import vertexai
-from vertexai.generative_models import GenerativeModel, Image
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_deepseek import ChatDeepSeek
 
-PROJECT_ID = "patrick-hulce-personal"
-LOCATION = "us-central1"
-MODEL = "gemini-1.5-pro-preview-0409"
+# Set API key if not already set
+if not os.getenv("DEEPSEEK_API_KEY"):
+    os.environ["DEEPSEEK_API_KEY"] = getpass.getpass("Enter your DeepSeek API key: ")
 
-# Initialize Vertex AI
-vertexai.init(project=PROJECT_ID, location=LOCATION)
-
-
-def load_image_from_url(image_url: str) -> Image:
-    with urllib.request.urlopen(image_url) as response:
-        response = typing.cast(http.client.HTTPResponse, response)
-        image_bytes = response.read()
-    return Image.from_bytes(image_bytes)
-
-
-def run_example():
-    # Load images from Cloud Storage URI
-    landmark1 = load_image_from_url(
-        "https://storage.googleapis.com/cloud-samples-data/vertex-ai/llm/prompts/landmark1.png"
-    )
-    landmark2 = load_image_from_url(
-        "https://storage.googleapis.com/cloud-samples-data/vertex-ai/llm/prompts/landmark2.png"
-    )
-
-    # Pass multimodal prompt
-    model = GenerativeModel(model_name=MODEL)
-    response = model.generate_content(
-        [
-            landmark1,
-            "city: Rome, Landmark: the Colosseum",
-            landmark2,
-        ]
-    )
-    print(response)
+MODEL = "deepseek-reasoner"  # Using DeepSeek's chat model
 
 
 def run_candidate_eval():
     RUBRIC_FILE = ".data/llm/rubric.txt"
-    INPUT_FILE = ".data/llm/input.txt"
+    INPUT_FILE = ".data/llm/input.csv"
     OUT_FILE = ".data/llm/output.csv"
+    LIMIT = 600
 
-    def write_csv(rows):
+    all_rows = []
+    processed_emails = set()
+    if os.path.exists(OUT_FILE):
+        with open(OUT_FILE, "r") as f:
+            reader = csv.DictReader(f)
+            all_rows = [row for row in reader]
+            processed_emails = set(row["candidate_email"] for row in reader)
+
+    def write_csv(rows: list[dict[str, Any]]):
+        flattened_rows: list[dict[str, Any]] = []
+        for row in rows:
+            flattened_rows.append(
+                {
+                    "candidate_email": row["candidate_email"],
+                    "overall_rating": row["overall_rating"],
+                    **{
+                        f"dimension_{k}": v for k, v in row["dimension_ratings"].items()
+                    },
+                    "explanation": row["explanation"],
+                }
+            )
+
         with open(OUT_FILE, "w") as f:
-            f.write("candidate_email,overall_rating,dimension_ratings,explanation\n")
-            for item in rows:
-                email = item["candidate_email"]
-                rating = item["overall_rating"]
-                dimensions = ";".join([f"{k}={v}" for k, v in item["dimension_ratings"].items()])
-                explanation = item["explanation"].replace('"', "")
-                f.write(f'"{email}",{rating},"{dimensions}","{explanation}"\n')
+            writer = csv.DictWriter(f, fieldnames=flattened_rows[0].keys())
+            writer.writeheader()
+            writer.writerows(flattened_rows)
 
     rubric = ""
-    rows = []
+    rows: list[dict[str, Any]] = []
     with open(RUBRIC_FILE, "r") as f:
         rubric = f.read()
     with open(INPUT_FILE, "r") as f:
-        text = f.read()
-        rows = [r.strip() for r in text.split(r"@@%%@@")]
-        rows = [r for r in rows if r]
+        csv_reader = csv.DictReader(f)
+        rows = [row for row in csv_reader][:LIMIT]
+        for row in rows:
+            name = f"{row['First Name']} {row['Last Name']}"
+            email = row["Email Address"] or ""
+            row["text"] = f"""
+{name} <{email}>
+Annual Household Income: {row["Annual Household Income"]}
+High School GPA (4.0 Scale): {row["High School GPA (4.0 Scale)"]}
+College GPA (4.0 Scale): {row["College GPA (4.0 Scale)"]}
+Immigrant Identity: {row["Immigrant Identity"]}
+SAT Score: {row["SAT Score"]}
+ACT Score: {row["ACT Score"]}
+Personal Statement: {row["Personal Statement"]}
+            """.strip()
+
+    # Filter out rows we've already evaluated
+    print(f"Found {len(rows)} total rows.")
+    print(f"Found {len(processed_emails)} rows already processed.")
+    rows = [row for row in rows if row["Email Address"] not in processed_emails]
+    print(f"Found {len(rows)} rows to evaluate.")
 
     # Group rows into chunks
     chunk_size = 10
     chunks = [rows[i : i + chunk_size] for i in range(0, len(rows), chunk_size)]
-    chunks = [rows[i : i + chunk_size] for i in range(120, 180, chunk_size)]
 
-    all_rows = []
+    # Initialize the DeepSeek model
+    model = ChatDeepSeek(
+        model=MODEL,
+        temperature=0.1,
+        max_tokens=None,
+    )
+
     for i, chunk in enumerate(chunks[:]):
-        # Pass multimodal prompt
-        model = GenerativeModel(
-            model_name=MODEL,
-            generation_config={
-                # "response_mime_type": "application/json",
-                "temperature": 0.1,
-            },
-        )
-        chunk_text = "\n\n".join(chunk)
+        chunk_text = "\n\n---\n\n".join([row["text"] for row in chunk])
         interface_text = """
         interface ResponseItem {
             /** The email of the candidate. */
@@ -99,8 +104,10 @@ def run_candidate_eval():
         """
         print(f"Generating content for chunk #{i}...")
         start_time = time.time()
-        response = model.generate_content(
-            f"""
+
+        # Create the prompt for DeepSeek
+        system_prompt = "You are an expert candidate evaluator. You will provide structured JSON output only."
+        human_prompt = f"""
             Your task is to evaluate candidates based on the following rubric:
 
             ```{rubric}```
@@ -116,28 +123,47 @@ def run_candidate_eval():
 
             {interface_text}
             """
+
+        # Invoke the model
+        response = model.invoke(
+            [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)]
         )
-        if len(response.candidates) == 0:
-            print(f"Error: No response for chunk #{i}")
-            print(response)
-            print(chunk_text)
-            continue
 
         print(f"Content generated in {time.time() - start_time:.2f} seconds.")
-        response_tokens = response.usage_metadata.candidates_token_count
-        print(f"Response tokens for chunk #{i}: {response_tokens}")
-        response_json = response.candidates[0].text.replace("```json", "", 1)
-        response_json = response_json.replace("```", "", 1)
-        if "```" in response_json:
-            print(f"Error: Unexpected closing code block in response for chunk #{i}")
-            print(response_json)
-            continue
+
+        # Process the response
+        assert isinstance(response.content, str)
+        response_text = response.content
+
+        # Clean up the response to extract JSON
+        if "```json" in response_text:
+            response_json = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_json = response_text.split("```")[1].split("```")[0].strip()
+        else:
+            response_json = response_text.strip()
 
         try:
             items = json.loads(response_json)
+            for item in items:
+                assert isinstance(item, dict)
+                assert "candidate_email" in item
+                assert "overall_rating" in item
+                assert "dimension_ratings" in item
+                assert "explanation" in item
+
+                assert isinstance(item["candidate_email"], str)
+                candidate_email = (
+                    item["candidate_email"].removeprefix("<").removesuffix(">")
+                )
+                item["candidate_email"] = candidate_email
+
             all_rows.extend(items)
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON response for chunk #{i}: {e}")
+            print(response_json)
+        except AssertionError as e:
+            print(f"Error validating JSON response for chunk #{i}: {e}")
             print(response_json)
         write_csv(all_rows)
 
