@@ -14,7 +14,7 @@
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
           sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
         min-height: 100vh;
         display: flex;
         justify-content: center;
@@ -23,48 +23,53 @@
       }
 
       .container {
-        background: white;
+        background: #141414;
         border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
         max-width: 1200px;
         width: 100%;
         padding: 40px;
+        border: 1px solid #333;
       }
 
       h1 {
         text-align: center;
-        color: #333;
+        color: #ffffff;
         margin-bottom: 30px;
         font-size: 2.5em;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
       }
 
       .upload-section {
-        border: 3px dashed #ddd;
+        border: 3px dashed #333;
         border-radius: 10px;
         padding: 40px;
         text-align: center;
         transition: border-color 0.3s;
-        background: #fafafa;
+        background: #1a1a1a;
       }
 
       .upload-section.dragover {
-        border-color: #667eea;
-        background: #f0f4ff;
+        border-color: #e50914;
+        background: #2a1a1a;
       }
 
       .file-input-label {
         display: inline-block;
         padding: 12px 30px;
-        background: #667eea;
+        background: #e50914;
         color: white;
         border-radius: 30px;
         cursor: pointer;
         font-weight: 600;
         transition: background 0.3s;
+        box-shadow: 0 4px 8px rgba(229, 9, 20, 0.3);
       }
 
       .file-input-label:hover {
-        background: #5a67d8;
+        background: #f40612;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(229, 9, 20, 0.4);
       }
 
       #videoInput {
@@ -75,19 +80,22 @@
         margin-top: 20px;
         padding: 15px;
         border-radius: 10px;
-        background: #e0f2ff;
-        color: #0066cc;
+        background: #1a1a1a;
+        color: #ffffff;
         display: none;
+        border: 1px solid #333;
       }
 
       .status.error {
-        background: #ffe0e0;
-        color: #cc0000;
+        background: #2a1a1a;
+        color: #ff6b6b;
+        border-color: #e50914;
       }
 
       .status.success {
-        background: #e0ffe0;
-        color: #008800;
+        background: #1a2a1a;
+        color: #6bff6b;
+        border-color: #00cc00;
       }
 
       .frames-container {
@@ -98,23 +106,27 @@
       }
 
       .frame-box {
-        background: #f8f9fa;
+        background: #1a1a1a;
         border-radius: 15px;
         overflow: hidden;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
         transition: transform 0.3s;
+        border: 1px solid #333;
       }
 
       .frame-box:hover {
         transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(229, 9, 20, 0.3);
+        border-color: #e50914;
       }
 
       .frame-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #e50914 0%, #b2070f 100%);
         color: white;
         padding: 15px;
         font-weight: 600;
         text-align: center;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       }
 
       .frame-image {
@@ -131,16 +143,17 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        color: #333;
+        color: #ffffff;
         line-height: 1.5;
+        background: #141414;
       }
 
       .loading {
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 3px solid #ddd;
-        border-top-color: #667eea;
+        border: 3px solid #333;
+        border-top-color: #e50914;
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
@@ -163,13 +176,13 @@
       }
 
       .webgpu-warning {
-        background: #fff3cd;
-        color: #856404;
+        background: #2a1a1a;
+        color: #ffd700;
         padding: 15px;
         border-radius: 10px;
         margin-bottom: 20px;
         text-align: center;
-        border: 1px solid #ffeaa7;
+        border: 1px solid #e50914;
       }
     </style>
   </head>
@@ -180,7 +193,7 @@
       <div class="upload-section" id="uploadSection">
         <label for="videoInput" class="file-input-label"> Choose Video File </label>
         <input type="file" id="videoInput" accept="video/*" />
-        <p style="margin-top: 15px; color: #666">Or drag and drop a video file here</p>
+        <p style="margin-top: 15px; color: #cccccc">Or drag and drop a video file here</p>
       </div>
 
       <div class="status" id="status"></div>
