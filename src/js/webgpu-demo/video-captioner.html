@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video Frame Captioner with SmolVLM</title>
+    <title>Video Frame Captioner with FastVLM</title>
     <style>
       * {
         margin: 0;
@@ -188,7 +188,7 @@
   </head>
   <body>
     <div class="container">
-      <h1>🎬 Video Frame Captioner with SmolVLM</h1>
+      <h1>🎬 Video Frame Captioner with FastVLM</h1>
 
       <div class="upload-section" id="uploadSection">
         <label for="videoInput" class="file-input-label"> Choose Video File </label>
@@ -231,8 +231,9 @@
     <script type="module">
       import {
         AutoProcessor,
-        AutoModelForVision2Seq,
+        AutoModelForImageTextToText,
         RawImage,
+        TextStreamer,
       } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers/dist/transformers.min.js'
 
       let processor, model
@@ -258,24 +259,24 @@
             .insertBefore(warningElement, document.querySelector('h1').nextSibling)
         }
 
-        // Initialize SmolVLM model
+        // Initialize FastVLM model
         await initializeModel()
 
         // Set up event listeners
         setupEventListeners()
       })
 
-      // Initialize the SmolVLM model
+      // Initialize the FastVLM model
       async function initializeModel() {
-        showStatus('Loading SmolVLM model... This may take a moment on first use.', 'info')
+        showStatus('Loading FastVLM model... This may take a moment on first use.', 'info')
         try {
-          const modelId = 'HuggingFaceTB/SmolVLM-500M-Instruct'
+          const modelId = 'onnx-community/FastVLM-0.5B-ONNX'
 
           showStatus('Loading processor...', 'info')
           processor = await AutoProcessor.from_pretrained(modelId)
 
           showStatus('Processor loaded. Loading model...', 'info')
-          model = await AutoModelForVision2Seq.from_pretrained(modelId, {
+          model = await AutoModelForImageTextToText.from_pretrained(modelId, {
             dtype: {
               embed_tokens: 'fp16',
               vision_encoder: 'q4',
@@ -386,15 +387,15 @@
             // Draw video frame to canvas
             ctx.drawImage(videoElement, 0, 0, frameCanvas.width, frameCanvas.height)
 
-            // Generate caption using SmolVLM
+            // Generate caption using FastVLM
             if (model && processor) {
               try {
-                // Convert canvas to RawImage for SmolVLM processing
+                // Convert canvas to RawImage for FastVLM processing
                 const frame = ctx.getImageData(0, 0, frameCanvas.width, frameCanvas.height)
                 const rawImg = new RawImage(frame.data, frame.width, frame.height, 4)
 
-                // Use the same instruction as example.html
-                const instruction = 'What do you see?'
+                // Use a concise instruction for FastVLM
+                const instruction = 'Describe this video frame briefly.'
                 const reply = await runLocalVisionInference(rawImg, instruction)
 
                 const captionElement = document.getElementById(captionId)
@@ -412,26 +413,29 @@
         })
       }
 
-      // SmolVLM inference function
+      // FastVLM inference function
       async function runLocalVisionInference(imgElement, instruction) {
         const messages = [
           {
-            role: 'user',
-            content: [{type: 'image'}, {type: 'text', text: instruction}],
+            role: 'system',
+            content: 'You are a helpful visual AI assistant. Respond concisely and accurately to the user\'s query in one sentence.',
           },
+          { role: 'user', content: `<image>${instruction}` },
         ]
 
-        const text = processor.apply_chat_template(messages, {
+        const prompt = processor.apply_chat_template(messages, {
           add_generation_prompt: true,
         })
 
-        const inputs = await processor(text, [imgElement], {
-          do_image_splitting: false,
+        const inputs = await processor(imgElement, prompt, {
+          add_special_tokens: false,
         })
 
         const generatedIds = await model.generate({
           ...inputs,
-          max_new_tokens: 100,
+          max_new_tokens: 512,
+          do_sample: false,
+          repetition_penalty: 1.2,
         })
 
         const output = processor.batch_decode(
