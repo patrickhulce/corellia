@@ -1,848 +1,1162 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drive Time Analyzer</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+      }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 400px 1fr;
-            gap: 20px;
-            height: calc(100vh - 40px);
-        }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 400px 1fr;
+        gap: 20px;
+        height: calc(100vh - 40px);
+      }
 
-        .sidebar {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            overflow-y: auto;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+      .sidebar {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        overflow-y: auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
 
-        .map-container {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+      .map-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
 
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #333;
-        }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+      }
 
-        h2 {
-            font-size: 18px;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            color: #555;
-        }
+      h2 {
+        font-size: 18px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        color: #555;
+      }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+      .form-group {
+        margin-bottom: 15px;
+      }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: #555;
-            font-size: 14px;
-        }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+      }
 
-        input[type="text"],
-        textarea,
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-        }
+      input[type='text'],
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+      }
 
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
+      textarea {
+        resize: vertical;
+        min-height: 100px;
+      }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
 
-        button:hover {
-            background: #357ae8;
-        }
+      button:hover {
+        background: #357ae8;
+      }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
 
-        .destinations {
-            margin-top: 20px;
-        }
+      .destinations {
+        margin-top: 20px;
+      }
 
-        .destination-item {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            border-left: 4px solid #4285f4;
-        }
+      .destination-item {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        border-left: 4px solid #4285f4;
+      }
 
-        .destination-item .name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-        }
+      .destination-item .name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
 
-        .destination-item .time {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 4px;
-        }
+      .destination-item .time {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+      }
 
-        .destination-item .drive-time {
-            font-size: 14px;
-            color: #4285f4;
-            font-weight: 600;
-        }
+      .destination-item .drive-time {
+        font-size: 14px;
+        color: #4285f4;
+        font-weight: 600;
+      }
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
 
-        .loading {
-            text-align: center;
-            color: #666;
-            padding: 20px;
-        }
+      .loading {
+        text-align: center;
+        color: #666;
+        padding: 20px;
+      }
 
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
+      .error {
+        background: #fee;
+        color: #c33;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
 
-        .help-text {
-            font-size: 12px;
-            color: #888;
-            margin-top: 5px;
-        }
+      .help-text {
+        font-size: 12px;
+        color: #888;
+        margin-top: 5px;
+      }
 
-        .day-selector {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            margin-bottom: 10px;
-        }
+      .day-selector {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        margin-bottom: 10px;
+      }
 
-        .day-checkbox {
-            display: none;
-        }
+      .day-checkbox {
+        display: none;
+      }
 
-        .day-label {
-            padding: 8px 4px;
-            text-align: center;
-            background: #f0f0f0;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-        }
+      .day-label {
+        padding: 8px 4px;
+        text-align: center;
+        background: #f0f0f0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
 
-        .day-checkbox:checked + .day-label {
-            background: #4285f4;
-            color: white;
-        }
+      .day-checkbox:checked + .day-label {
+        background: #4285f4;
+        color: white;
+      }
 
-        .time-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
+      .time-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
 
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+      .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
 
-        .button-secondary {
-            background: #5f6368;
-        }
+      .button-secondary {
+        background: #5f6368;
+      }
 
-        .button-secondary:hover {
-            background: #4a4d52;
-        }
+      .button-secondary:hover {
+        background: #4a4d52;
+      }
 
-        .parsed-item {
-            background: #e8f0fe;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            border-left: 3px solid #1967d2;
-            font-size: 14px;
-        }
+      .parsed-item {
+        background: #e8f0fe;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        border-left: 3px solid #1967d2;
+        font-size: 14px;
+      }
 
-        .parsed-item .location {
-            font-weight: 600;
-            color: #1967d2;
-            margin-bottom: 2px;
-        }
+      .parsed-item .location {
+        font-weight: 600;
+        color: #1967d2;
+        margin-bottom: 2px;
+      }
 
-        .parsed-item .schedule {
-            font-size: 12px;
-            color: #5f6368;
-        }
+      .parsed-item .schedule {
+        font-size: 12px;
+        color: #5f6368;
+      }
 
-        .parsed-section {
-            margin-top: 15px;
-        }
+      .parsed-section {
+        margin-top: 15px;
+      }
 
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 10px;
-        }
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 10px;
+      }
 
-        .button-clear {
-            background: #d93025;
-        }
+      .button-clear {
+        background: #d93025;
+      }
 
-        .button-clear:hover {
-            background: #b3251e;
-        }
+      .button-clear:hover {
+        background: #b3251e;
+      }
 
-        .state-buttons {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
+      .state-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 5px;
+        margin-bottom: 15px;
+      }
 
-        .state-buttons button {
-            flex: 1;
-            padding: 8px;
-            font-size: 12px;
-        }
+      .state-buttons button {
+        padding: 8px;
+        font-size: 12px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="sidebar">
-            <h1>Drive Time Analyzer</h1>
+      <div class="sidebar">
+        <h1>Drive Time Analyzer</h1>
 
-            <div class="state-buttons">
-                <button id="saveBtn" class="button-secondary">Save</button>
-                <button id="clearBtn" class="button-clear">Clear</button>
-            </div>
+        <div class="state-buttons">
+          <button id="saveBtn" class="button-secondary">Save</button>
+          <button id="exportBtn" class="button-secondary">Export</button>
+          <button id="importBtn" class="button-secondary">Import</button>
+          <button id="clearBtn" class="button-clear">Clear</button>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="display: none" />
 
-            <div class="form-group">
-                <label for="hubAddress">Hub Address</label>
-                <input type="text" id="hubAddress" placeholder="123 Main St, City, State">
-            </div>
-
-            <div class="form-group">
-                <label for="hubLabel">Hub Label</label>
-                <input type="text" id="hubLabel" placeholder="Home, Office, etc.">
-            </div>
-
-            <h2>Destinations</h2>
-
-            <div class="form-group">
-                <label for="destinations">Enter destinations with their times (one per line)</label>
-                <textarea id="destinations" placeholder="Trammel Crow Center, Dallas, TX - Tuesdays at 8am&#10;the nearest Costco - Saturdays at 10am&#10;DFW Airport Terminal A - Thursdays at 11am" style="min-height: 300px;"></textarea>
-                <div class="help-text">Format: Location description - Day(s) at Time</div>
-            </div>
-
-            <div class="button-group">
-                <button id="parseBtn" class="button-secondary">Parse</button>
-                <button id="analyzeBtn" disabled>Analyze</button>
-            </div>
-
-            <div id="error" class="error" style="display: none;"></div>
-
-            <div id="parsedDestinations" class="parsed-section" style="display: none;">
-                <div class="section-title">Parsed Destinations</div>
-                <div id="parsedList"></div>
-            </div>
-
-            <div id="results" class="destinations"></div>
+        <div class="form-group">
+          <label for="hubAddress">Hub Address</label>
+          <input type="text" id="hubAddress" placeholder="123 Main St, City, State" />
         </div>
 
-        <div class="map-container">
-            <div id="map"></div>
+        <div class="form-group">
+          <label for="hubLabel">Hub Label</label>
+          <input type="text" id="hubLabel" placeholder="Home, Office, etc." />
         </div>
+
+        <h2>Destinations</h2>
+
+        <div class="form-group">
+          <label for="destinations">Enter destinations with their times (one per line)</label>
+          <textarea
+            id="destinations"
+            placeholder="Trammel Crow Center, Dallas, TX - Tuesdays at 8am&#10;the nearest Costco - Saturdays at 10am&#10;DFW Airport Terminal A - Thursdays at 11am"
+            style="min-height: 300px"
+          ></textarea>
+          <div class="help-text">Format: Location description - Day(s) at Time</div>
+        </div>
+
+        <div class="button-group">
+          <button id="parseBtn" class="button-secondary">Parse</button>
+          <button id="analyzeBtn" disabled>Analyze</button>
+        </div>
+
+        <div id="error" class="error" style="display: none"></div>
+
+        <div id="parsedDestinations" class="parsed-section" style="display: none">
+          <div class="section-title">Parsed Destinations</div>
+          <div id="parsedList"></div>
+        </div>
+
+        <div id="results" class="destinations"></div>
+      </div>
+
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
     </div>
 
     <script>
-        let map;
-        let markers = [];
-        let directionsRenderers = [];
-        let parsedDestinations = [];
+      let map
+      let markers = []
+      let directionsRenderers = []
+      let parsedDestinations = []
+      let analysisResults = null
+      let hubLocation = null
 
-        // Get API key from URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const API_KEY = urlParams.get('apiKey') || '';
+      // Get API key from URL query parameter
+      const urlParams = new URLSearchParams(window.location.search)
+      const API_KEY = urlParams.get('apiKey') || ''
 
-        function initMap() {
-            if (!API_KEY) {
-                console.error('No API key provided');
-                return;
-            }
-
-            map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 32.7767, lng: -96.7970 }, // Dallas, TX
-                zoom: 12
-            });
+      function initMap() {
+        if (!API_KEY) {
+          console.error('No API key provided')
+          return
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 32.7767, lng: -96.797}, // Dallas, TX
+          zoom: 12,
+        })
+
+        // Load saved state after map is initialized
+        loadState()
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById('error')
+        errorDiv.textContent = message
+        errorDiv.style.display = 'block'
+        setTimeout(() => {
+          errorDiv.style.display = 'none'
+        }, 5000)
+      }
+
+      function clearMap() {
+        markers.forEach(marker => marker.setMap(null))
+        markers = []
+        directionsRenderers.forEach(renderer => renderer.setMap(null))
+        directionsRenderers = []
+      }
+
+      function parseDestinationLine(line) {
+        // Parse lines like "Trammel Crow Center, Dallas, TX - Tuesdays at 8am"
+        // or "the nearest Costco - Saturdays at 10am"
+
+        const match = line.match(/^(.+?)\s*-\s*(.+?)\s+at\s+(.+)$/i)
+        if (!match) {
+          return null
         }
 
-        function clearMap() {
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
-            directionsRenderers.forEach(renderer => renderer.setMap(null));
-            directionsRenderers = [];
+        const location = match[1].trim()
+        const daysPart = match[2].trim()
+        const timePart = match[3].trim()
+
+        // Parse days
+        const daysMap = {
+          sunday: 0,
+          sundays: 0,
+          sun: 0,
+          monday: 1,
+          mondays: 1,
+          mon: 1,
+          tuesday: 2,
+          tuesdays: 2,
+          tue: 2,
+          tues: 2,
+          wednesday: 3,
+          wednesdays: 3,
+          wed: 3,
+          thursday: 4,
+          thursdays: 4,
+          thu: 4,
+          thur: 4,
+          thurs: 4,
+          friday: 5,
+          fridays: 5,
+          fri: 5,
+          saturday: 6,
+          saturdays: 6,
+          sat: 6,
         }
 
-        function parseDestinationLine(line) {
-            // Parse lines like "Trammel Crow Center, Dallas, TX - Tuesdays at 8am"
-            // or "the nearest Costco - Saturdays at 10am"
-
-            const match = line.match(/^(.+?)\s*-\s*(.+?)\s+at\s+(.+)$/i);
-            if (!match) {
-                return null;
+        const days = []
+        const daysLower = daysPart.toLowerCase()
+        for (const [key, value] of Object.entries(daysMap)) {
+          if (daysLower.includes(key)) {
+            if (!days.includes(value)) {
+              days.push(value)
             }
-
-            const location = match[1].trim();
-            const daysPart = match[2].trim();
-            const timePart = match[3].trim();
-
-            // Parse days
-            const daysMap = {
-                'sunday': 0, 'sundays': 0, 'sun': 0,
-                'monday': 1, 'mondays': 1, 'mon': 1,
-                'tuesday': 2, 'tuesdays': 2, 'tue': 2, 'tues': 2,
-                'wednesday': 3, 'wednesdays': 3, 'wed': 3,
-                'thursday': 4, 'thursdays': 4, 'thu': 4, 'thur': 4, 'thurs': 4,
-                'friday': 5, 'fridays': 5, 'fri': 5,
-                'saturday': 6, 'saturdays': 6, 'sat': 6
-            };
-
-            const days = [];
-            const daysLower = daysPart.toLowerCase();
-            for (const [key, value] of Object.entries(daysMap)) {
-                if (daysLower.includes(key)) {
-                    if (!days.includes(value)) {
-                        days.push(value);
-                    }
-                }
-            }
-
-            if (days.length === 0) {
-                return null;
-            }
-
-            // Parse time
-            const timeMatch = timePart.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
-            if (!timeMatch) {
-                return null;
-            }
-
-            let hour = parseInt(timeMatch[1]);
-            const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-            const meridiem = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
-
-            if (meridiem === 'pm' && hour !== 12) {
-                hour += 12;
-            } else if (meridiem === 'am' && hour === 12) {
-                hour = 0;
-            }
-
-            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-
-            return {
-                location: location,
-                days: days,
-                time: timeString
-            };
+          }
         }
 
-        function getNextDateForDay(dayOfWeek, hour, minute) {
-            const now = new Date();
-            const result = new Date(now);
-            result.setHours(hour, minute, 0, 0);
+        if (days.length === 0) {
+          return null
+        }
 
-            const currentDay = now.getDay();
-            const daysUntil = (dayOfWeek - currentDay + 7) % 7;
+        // Parse time
+        const timeMatch = timePart.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i)
+        if (!timeMatch) {
+          return null
+        }
 
-            if (daysUntil === 0 && now.getHours() * 60 + now.getMinutes() > hour * 60 + minute) {
-                result.setDate(result.getDate() + 7);
+        let hour = parseInt(timeMatch[1])
+        const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0
+        const meridiem = timeMatch[3] ? timeMatch[3].toLowerCase() : null
+
+        if (meridiem === 'pm' && hour !== 12) {
+          hour += 12
+        } else if (meridiem === 'am' && hour === 12) {
+          hour = 0
+        }
+
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute
+          .toString()
+          .padStart(2, '0')}`
+
+        return {
+          location: location,
+          days: days,
+          time: timeString,
+        }
+      }
+
+      function getNextDateForDay(dayOfWeek, hour, minute) {
+        const now = new Date()
+        const result = new Date(now)
+        result.setHours(hour, minute, 0, 0)
+
+        const currentDay = now.getDay()
+        const daysUntil = (dayOfWeek - currentDay + 7) % 7
+
+        if (daysUntil === 0 && now.getHours() * 60 + now.getMinutes() > hour * 60 + minute) {
+          result.setDate(result.getDate() + 7)
+        } else {
+          result.setDate(result.getDate() + daysUntil)
+        }
+
+        return result
+      }
+
+      async function geocodeAddress(address) {
+        const geocoder = new google.maps.Geocoder()
+        return new Promise((resolve, reject) => {
+          geocoder.geocode({address: address}, (results, status) => {
+            if (status === 'OK') {
+              resolve(results[0].geometry.location)
             } else {
-                result.setDate(result.getDate() + daysUntil);
+              reject(new Error(`Geocoding failed for "${address}": ${status}`))
             }
+          })
+        })
+      }
 
-            return result;
+      async function getDriveTime(origin, destination, departureTime) {
+        const service = new google.maps.DistanceMatrixService()
+
+        return new Promise((resolve, reject) => {
+          service.getDistanceMatrix(
+            {
+              origins: [origin],
+              destinations: [destination],
+              travelMode: 'DRIVING',
+              drivingOptions: {
+                departureTime: departureTime,
+                trafficModel: 'bestguess',
+              },
+            },
+            (response, status) => {
+              if (status === 'OK') {
+                const result = response.rows[0].elements[0]
+                if (result.status === 'OK') {
+                  resolve({
+                    withTraffic: result.duration_in_traffic
+                      ? result.duration_in_traffic.value
+                      : result.duration.value,
+                    noTraffic: result.duration.value,
+                  })
+                } else {
+                  reject(new Error(`Route failed: ${result.status}`))
+                }
+              } else {
+                reject(new Error(`Distance Matrix failed: ${status}`))
+              }
+            },
+          )
+        })
+      }
+
+      function median(values) {
+        if (values.length === 0) return 0
+        const sorted = values.slice().sort((a, b) => a - b)
+        const mid = Math.floor(sorted.length / 2)
+        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+      }
+
+      function formatDuration(seconds) {
+        const minutes = Math.round(seconds / 60)
+        const hours = Math.floor(minutes / 60)
+        const mins = minutes % 60
+
+        if (hours > 0) {
+          return `${hours}h ${mins}m`
         }
+        return `${mins} min`
+      }
 
-        async function geocodeAddress(address) {
-            const geocoder = new google.maps.Geocoder();
-            return new Promise((resolve, reject) => {
-                geocoder.geocode({ address: address }, (results, status) => {
-                    if (status === 'OK') {
-                        resolve(results[0].geometry.location);
-                    } else {
-                        reject(new Error(`Geocoding failed for "${address}": ${status}`));
-                    }
-                });
-            });
-        }
+      async function analyzeDestination(
+        hubLocation,
+        destAddress,
+        destLabel,
+        selectedDays,
+        time,
+        timeWindow = 60,
+      ) {
+        const destLocation = await geocodeAddress(destAddress)
 
-        async function getDriveTime(origin, destination, departureTime) {
-            const service = new google.maps.DistanceMatrixService();
+        const [hour, minute] = time.split(':').map(Number)
 
-            return new Promise((resolve, reject) => {
-                service.getDistanceMatrix({
-                    origins: [origin],
-                    destinations: [destination],
-                    travelMode: 'DRIVING',
-                    drivingOptions: {
-                        departureTime: departureTime,
-                        trafficModel: 'bestguess'
-                    }
-                }, (response, status) => {
-                    if (status === 'OK') {
-                        const result = response.rows[0].elements[0];
-                        if (result.status === 'OK') {
-                            resolve(result.duration_in_traffic ? result.duration_in_traffic.value : result.duration.value);
-                        } else {
-                            reject(new Error(`Route failed: ${result.status}`));
-                        }
-                    } else {
-                        reject(new Error(`Distance Matrix failed: ${status}`));
-                    }
-                });
-            });
-        }
+        const driveTimesWithTraffic = []
+        const driveTimesNoTraffic = []
 
-        function median(values) {
-            if (values.length === 0) return 0;
-            const sorted = values.slice().sort((a, b) => a - b);
-            const mid = Math.floor(sorted.length / 2);
-            return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-        }
+        // Sample at the specified time and 30 min after
+        const timeOffsets = [0, 30]
 
-        function formatDuration(seconds) {
-            const minutes = Math.round(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
+        // Sample across multiple weeks (3 occurrences of each selected day)
+        const weekOffsets = [0, 7, 14] // This week, next week, and week after
 
-            if (hours > 0) {
-                return `${hours}h ${mins}m`;
+        for (const day of selectedDays) {
+          for (const weekOffset of weekOffsets) {
+            for (const timeOffset of timeOffsets) {
+              const departureDate = getNextDateForDay(day, hour, minute)
+              departureDate.setDate(departureDate.getDate() + weekOffset)
+              departureDate.setMinutes(departureDate.getMinutes() + timeOffset)
+
+              try {
+                const durations = await getDriveTime(hubLocation, destLocation, departureDate)
+                driveTimesWithTraffic.push(durations.withTraffic)
+                driveTimesNoTraffic.push(durations.noTraffic)
+                await new Promise(resolve => setTimeout(resolve, 200))
+              } catch (error) {
+                console.error('Error getting drive time:', error)
+              }
             }
-            return `${mins} min`;
+          }
         }
 
-        async function analyzeDestination(hubLocation, destAddress, destLabel, selectedDays, time, timeWindow = 60) {
-            const destLocation = await geocodeAddress(destAddress);
+        const medianTime = median(driveTimesWithTraffic)
 
-            const [hour, minute] = time.split(':').map(Number);
+        // Collect all times (both with and without traffic) to find true min/max
+        const allTimes = [...driveTimesWithTraffic, ...driveTimesNoTraffic]
+        const minTime = allTimes.length > 0 ? Math.min(...allTimes) : 0
+        const maxTime = allTimes.length > 0 ? Math.max(...allTimes) : 0
 
-            const driveTimes = [];
+        return {
+          label: destLabel,
+          address: destAddress,
+          location: destLocation,
+          medianTime: medianTime,
+          minTime: minTime,
+          maxTime: maxTime,
+          samples: driveTimesWithTraffic.length,
+          days: selectedDays,
+          time: time,
+          // Store raw samples for recomputation
+          rawSamples: {
+            withTraffic: driveTimesWithTraffic,
+            noTraffic: driveTimesNoTraffic,
+          },
+        }
+      }
 
-            // Sample 3 times: at the specified time, 30 min before, and 30 min after
-            const timeOffsets = [-30, 0, 30];
+      function addMarker(location, label, color) {
+        const marker = new google.maps.Marker({
+          position: location,
+          map: map,
+          label: label,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: 'white',
+            strokeWeight: 2,
+          },
+        })
+        markers.push(marker)
+        return marker
+      }
 
-            for (const day of selectedDays) {
-                for (const offset of timeOffsets) {
-                    const departureDate = getNextDateForDay(day, hour, minute);
-                    departureDate.setMinutes(departureDate.getMinutes() + offset);
+      function drawRoute(origin, destination, color) {
+        const directionsService = new google.maps.DirectionsService()
+        const directionsRenderer = new google.maps.DirectionsRenderer({
+          map: map,
+          suppressMarkers: true,
+          polylineOptions: {
+            strokeColor: color,
+            strokeWeight: 4,
+            strokeOpacity: 0.7,
+          },
+        })
 
-                    try {
-                        const duration = await getDriveTime(hubLocation, destLocation, departureDate);
-                        driveTimes.push(duration);
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    } catch (error) {
-                        console.error('Error getting drive time:', error);
-                    }
-                }
+        directionsService.route(
+          {
+            origin: origin,
+            destination: destination,
+            travelMode: 'DRIVING',
+          },
+          (result, status) => {
+            if (status === 'OK') {
+              directionsRenderer.setDirections(result)
             }
+          },
+        )
 
-            const medianTime = median(driveTimes);
+        directionsRenderers.push(directionsRenderer)
+      }
 
-            return {
-                label: destLabel,
-                address: destAddress,
-                location: destLocation,
-                medianTime: medianTime,
-                samples: driveTimes.length,
-                days: selectedDays,
-                time: time
-            };
+      function getColorForIndex(index, total) {
+        const hue = ((index * 360) / total) % 360
+        return `hsl(${hue}, 70%, 50%)`
+      }
+
+      function getDayName(dayNum) {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        return days[dayNum]
+      }
+
+      function formatTime(timeString) {
+        const [hour, minute] = timeString.split(':').map(Number)
+        const meridiem = hour >= 12 ? 'PM' : 'AM'
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+        return `${displayHour}:${minute.toString().padStart(2, '0')} ${meridiem}`
+      }
+
+      // Recompute statistics from raw samples
+      function recomputeStatistics(result) {
+        if (!result.rawSamples) {
+          // Fallback to existing values if no raw samples
+          return result
         }
 
-        function addMarker(location, label, color) {
-            const marker = new google.maps.Marker({
-                position: location,
-                map: map,
-                label: label,
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
-                    fillColor: color,
-                    fillOpacity: 1,
-                    strokeColor: 'white',
-                    strokeWeight: 2
-                }
-            });
-            markers.push(marker);
-            return marker;
+        const {withTraffic, noTraffic} = result.rawSamples
+        const allTimes = [...withTraffic, ...noTraffic]
+
+        return {
+          ...result,
+          medianTime: median(withTraffic),
+          minTime: allTimes.length > 0 ? Math.min(...allTimes) : 0,
+          maxTime: allTimes.length > 0 ? Math.max(...allTimes) : 0,
+          samples: withTraffic.length,
+        }
+      }
+
+      // State management
+      const STATE_KEY = 'driveTimeAnalyzerState'
+
+      function saveState() {
+        const state = {
+          hubAddress: document.getElementById('hubAddress').value,
+          hubLabel: document.getElementById('hubLabel').value,
+          destinations: document.getElementById('destinations').value,
+          parsedDestinations: parsedDestinations,
+          analysisResults: analysisResults,
+          hubLocation: hubLocation ? {lat: hubLocation.lat(), lng: hubLocation.lng()} : null,
         }
 
-        function drawRoute(origin, destination, color) {
-            const directionsService = new google.maps.DirectionsService();
-            const directionsRenderer = new google.maps.DirectionsRenderer({
-                map: map,
-                suppressMarkers: true,
-                polylineOptions: {
-                    strokeColor: color,
-                    strokeWeight: 4,
-                    strokeOpacity: 0.7
-                }
-            });
-
-            directionsService.route({
-                origin: origin,
-                destination: destination,
-                travelMode: 'DRIVING'
-            }, (result, status) => {
-                if (status === 'OK') {
-                    directionsRenderer.setDirections(result);
-                }
-            });
-
-            directionsRenderers.push(directionsRenderer);
+        try {
+          localStorage.setItem(STATE_KEY, JSON.stringify(state))
+          console.log('State saved successfully')
+          return true
+        } catch (error) {
+          console.error('Error saving state:', error)
+          showError('Failed to save state to localStorage')
+          return false
         }
+      }
 
-        function getColorForIndex(index, total) {
-            const hue = (index * 360 / total) % 360;
-            return `hsl(${hue}, 70%, 50%)`;
-        }
+      function loadState() {
+        try {
+          const savedState = localStorage.getItem(STATE_KEY)
+          if (!savedState) {
+            return false
+          }
 
-        function getDayName(dayNum) {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            return days[dayNum];
-        }
+          const state = JSON.parse(savedState)
 
-        function formatTime(timeString) {
-            const [hour, minute] = timeString.split(':').map(Number);
-            const meridiem = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            return `${displayHour}:${minute.toString().padStart(2, '0')} ${meridiem}`;
-        }
+          // Restore form values
+          document.getElementById('hubAddress').value = state.hubAddress || ''
+          document.getElementById('hubLabel').value = state.hubLabel || ''
+          document.getElementById('destinations').value = state.destinations || ''
 
-        // State management
-        const STATE_KEY = 'driveTimeAnalyzerState';
+          // Restore hub location
+          if (state.hubLocation) {
+            hubLocation = new google.maps.LatLng(state.hubLocation.lat, state.hubLocation.lng)
+          }
 
-        function saveState() {
-            const state = {
-                hubAddress: document.getElementById('hubAddress').value,
-                hubLabel: document.getElementById('hubLabel').value,
-                destinations: document.getElementById('destinations').value,
-                parsedDestinations: parsedDestinations
-            };
+          // Restore parsed destinations
+          if (state.parsedDestinations && state.parsedDestinations.length > 0) {
+            parsedDestinations = state.parsedDestinations
 
-            try {
-                localStorage.setItem(STATE_KEY, JSON.stringify(state));
-                console.log('State saved successfully');
-                return true;
-            } catch (error) {
-                console.error('Error saving state:', error);
-                showError('Failed to save state to localStorage');
-                return false;
-            }
-        }
-
-        function loadState() {
-            try {
-                const savedState = localStorage.getItem(STATE_KEY);
-                if (!savedState) {
-                    return false;
-                }
-
-                const state = JSON.parse(savedState);
-
-                // Restore form values
-                document.getElementById('hubAddress').value = state.hubAddress || '';
-                document.getElementById('hubLabel').value = state.hubLabel || '';
-                document.getElementById('destinations').value = state.destinations || '';
-
-                // Restore parsed destinations
-                if (state.parsedDestinations && state.parsedDestinations.length > 0) {
-                    parsedDestinations = state.parsedDestinations;
-
-                    // Display parsed destinations
-                    const parsedHTML = parsedDestinations.map((dest, index) => {
-                        const daysStr = dest.days.map(d => getDayName(d)).join(', ');
-                        return `
+            // Display parsed destinations
+            const parsedHTML = parsedDestinations
+              .map((dest, index) => {
+                const daysStr = dest.days.map(d => getDayName(d)).join(', ')
+                return `
                             <div class="parsed-item">
                                 <div class="location">${index + 1}. ${dest.location}</div>
                                 <div class="schedule">${daysStr} at ${formatTime(dest.time)}</div>
                             </div>
-                        `;
-                    }).join('');
+                        `
+              })
+              .join('')
 
-                    document.getElementById('parsedList').innerHTML = parsedHTML;
-                    document.getElementById('parsedDestinations').style.display = 'block';
-                    document.getElementById('analyzeBtn').disabled = false;
-                }
+            document.getElementById('parsedList').innerHTML = parsedHTML
+            document.getElementById('parsedDestinations').style.display = 'block'
+            document.getElementById('analyzeBtn').disabled = false
+          }
 
-                console.log('State loaded successfully');
-                return true;
-            } catch (error) {
-                console.error('Error loading state:', error);
-                showError('Failed to load state from localStorage');
-                return false;
-            }
-        }
+          // Restore analysis results
+          if (state.analysisResults && state.analysisResults.length > 0) {
+            // Recompute statistics from raw samples in case display logic changed
+            analysisResults = state.analysisResults.map(recomputeStatistics)
 
-        function clearState() {
-            if (confirm('Are you sure you want to clear all saved data?')) {
-                try {
-                    localStorage.removeItem(STATE_KEY);
-                    document.getElementById('hubAddress').value = '';
-                    document.getElementById('hubLabel').value = '';
-                    document.getElementById('destinations').value = '';
-                    document.getElementById('parsedList').innerHTML = '';
-                    document.getElementById('parsedDestinations').style.display = 'none';
-                    document.getElementById('results').innerHTML = '';
-                    parsedDestinations = [];
-                    document.getElementById('analyzeBtn').disabled = true;
-                    clearMap();
-                    console.log('State cleared successfully');
-                } catch (error) {
-                    console.error('Error clearing state:', error);
-                    showError('Failed to clear state');
-                }
-            }
-        }
-
-        // Auto-save when inputs change
-        function setupAutoSave() {
-            const debounce = (func, wait) => {
-                let timeout;
-                return function executedFunction(...args) {
-                    const later = () => {
-                        clearTimeout(timeout);
-                        func(...args);
-                    };
-                    clearTimeout(timeout);
-                    timeout = setTimeout(later, wait);
-                };
-            };
-
-            const debouncedSave = debounce(saveState, 1000);
-
-            document.getElementById('hubAddress').addEventListener('input', debouncedSave);
-            document.getElementById('hubLabel').addEventListener('input', debouncedSave);
-            document.getElementById('destinations').addEventListener('input', debouncedSave);
-        }
-
-        // Parse button handler
-        document.getElementById('parseBtn').addEventListener('click', () => {
-            const destinationsText = document.getElementById('destinations').value.trim();
-
-            if (!destinationsText) {
-                showError('Please enter destinations to parse');
-                return;
-            }
-
-            const destinationLines = destinationsText.split('\n').filter(line => line.trim());
-            parsedDestinations = [];
-
-            for (const line of destinationLines) {
-                const parsed = parseDestinationLine(line);
-                if (parsed) {
-                    parsedDestinations.push(parsed);
-                } else {
-                    console.warn(`Could not parse line: ${line}`);
-                    showError(`Could not parse: ${line}`);
-                }
-            }
-
-            if (parsedDestinations.length === 0) {
-                showError('No valid destinations found. Please check the format.');
-                document.getElementById('parsedDestinations').style.display = 'none';
-                document.getElementById('analyzeBtn').disabled = true;
-                return;
-            }
-
-            // Display parsed destinations
-            const parsedHTML = parsedDestinations.map((dest, index) => {
-                const daysStr = dest.days.map(d => getDayName(d)).join(', ');
+            // Display results
+            const resultsHTML = analysisResults
+              .map((result, index) => {
+                const daysStr = result.days.map(d => getDayName(d)).join(', ')
                 return `
+                            <div class="destination-item">
+                                <div class="name">${index + 1}. ${result.label}</div>
+                                <div class="time">${daysStr} at ${formatTime(result.time)}</div>
+                                <div class="drive-time">Median: ${formatDuration(
+                                  result.medianTime,
+                                )} | Range: ${formatDuration(result.minTime)} - ${formatDuration(
+                  result.maxTime,
+                )} (${result.samples} samples)</div>
+                            </div>
+                        `
+              })
+              .join('')
+
+            document.getElementById('results').innerHTML = resultsHTML
+
+            // Restore map markers and routes
+            if (map && hubLocation) {
+              clearMap()
+
+              map.setCenter(hubLocation)
+              addMarker(hubLocation, 'H', '#EA4335')
+
+              analysisResults.forEach((result, index) => {
+                const resultLocation = new google.maps.LatLng(
+                  result.location.lat,
+                  result.location.lng,
+                )
+                const color = getColorForIndex(index, analysisResults.length)
+                addMarker(resultLocation, (index + 1).toString(), color)
+                drawRoute(hubLocation, resultLocation, color)
+              })
+
+              const bounds = new google.maps.LatLngBounds()
+              bounds.extend(hubLocation)
+              analysisResults.forEach(result => {
+                bounds.extend(new google.maps.LatLng(result.location.lat, result.location.lng))
+              })
+              map.fitBounds(bounds)
+            }
+          }
+
+          console.log('State loaded successfully')
+          return true
+        } catch (error) {
+          console.error('Error loading state:', error)
+          showError('Failed to load state from localStorage')
+          return false
+        }
+      }
+
+      function clearState() {
+        if (confirm('Are you sure you want to clear all saved data?')) {
+          try {
+            localStorage.removeItem(STATE_KEY)
+            document.getElementById('hubAddress').value = ''
+            document.getElementById('hubLabel').value = ''
+            document.getElementById('destinations').value = ''
+            document.getElementById('parsedList').innerHTML = ''
+            document.getElementById('parsedDestinations').style.display = 'none'
+            document.getElementById('results').innerHTML = ''
+            parsedDestinations = []
+            analysisResults = null
+            hubLocation = null
+            document.getElementById('analyzeBtn').disabled = true
+            clearMap()
+            console.log('State cleared successfully')
+          } catch (error) {
+            console.error('Error clearing state:', error)
+            showError('Failed to clear state')
+          }
+        }
+      }
+
+      // Auto-save when inputs change
+      function setupAutoSave() {
+        const debounce = (func, wait) => {
+          let timeout
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout)
+              func(...args)
+            }
+            clearTimeout(timeout)
+            timeout = setTimeout(later, wait)
+          }
+        }
+
+        const debouncedSave = debounce(saveState, 1000)
+
+        document.getElementById('hubAddress').addEventListener('input', debouncedSave)
+        document.getElementById('hubLabel').addEventListener('input', debouncedSave)
+        document.getElementById('destinations').addEventListener('input', debouncedSave)
+      }
+
+      // Parse button handler
+      document.getElementById('parseBtn').addEventListener('click', () => {
+        const destinationsText = document.getElementById('destinations').value.trim()
+
+        if (!destinationsText) {
+          showError('Please enter destinations to parse')
+          return
+        }
+
+        const destinationLines = destinationsText.split('\n').filter(line => line.trim())
+        parsedDestinations = []
+
+        for (const line of destinationLines) {
+          const parsed = parseDestinationLine(line)
+          if (parsed) {
+            parsedDestinations.push(parsed)
+          } else {
+            console.warn(`Could not parse line: ${line}`)
+            showError(`Could not parse: ${line}`)
+          }
+        }
+
+        if (parsedDestinations.length === 0) {
+          showError('No valid destinations found. Please check the format.')
+          document.getElementById('parsedDestinations').style.display = 'none'
+          document.getElementById('analyzeBtn').disabled = true
+          return
+        }
+
+        // Display parsed destinations
+        const parsedHTML = parsedDestinations
+          .map((dest, index) => {
+            const daysStr = dest.days.map(d => getDayName(d)).join(', ')
+            return `
                     <div class="parsed-item">
                         <div class="location">${index + 1}. ${dest.location}</div>
                         <div class="schedule">${daysStr} at ${formatTime(dest.time)}</div>
                     </div>
-                `;
-            }).join('');
+                `
+          })
+          .join('')
 
-            document.getElementById('parsedList').innerHTML = parsedHTML;
-            document.getElementById('parsedDestinations').style.display = 'block';
-            document.getElementById('analyzeBtn').disabled = false;
-            document.getElementById('results').innerHTML = '';
+        document.getElementById('parsedList').innerHTML = parsedHTML
+        document.getElementById('parsedDestinations').style.display = 'block'
+        document.getElementById('analyzeBtn').disabled = false
+        document.getElementById('results').innerHTML = ''
 
-            // Save state after parsing
-            saveState();
-        });
+        // Save state after parsing
+        saveState()
+      })
 
-        // Analyze button handler
-        document.getElementById('analyzeBtn').addEventListener('click', async () => {
-            const hubAddress = document.getElementById('hubAddress').value.trim();
-            const hubLabel = document.getElementById('hubLabel').value.trim() || 'Hub';
+      // Analyze button handler
+      document.getElementById('analyzeBtn').addEventListener('click', async () => {
+        const hubAddress = document.getElementById('hubAddress').value.trim()
+        const hubLabel = document.getElementById('hubLabel').value.trim() || 'Hub'
 
-            if (!hubAddress) {
-                showError('Please enter hub address');
-                return;
-            }
+        if (!hubAddress) {
+          showError('Please enter hub address')
+          return
+        }
 
-            if (parsedDestinations.length === 0) {
-                showError('Please parse destinations first');
-                return;
-            }
+        if (parsedDestinations.length === 0) {
+          showError('Please parse destinations first')
+          return
+        }
 
-            const button = document.getElementById('analyzeBtn');
-            button.disabled = true;
-            button.textContent = 'Analyzing...';
+        const button = document.getElementById('analyzeBtn')
+        button.disabled = true
+        button.textContent = 'Analyzing...'
 
-            clearMap();
-            document.getElementById('results').innerHTML = '<div class="loading">Calculating drive times...</div>';
+        clearMap()
+        document.getElementById('results').innerHTML =
+          '<div class="loading">Calculating drive times...</div>'
 
+        try {
+          hubLocation = await geocodeAddress(hubAddress)
+
+          map.setCenter(hubLocation)
+          map.setZoom(12)
+
+          addMarker(hubLocation, 'H', '#EA4335')
+
+          const results = []
+          for (let i = 0; i < parsedDestinations.length; i++) {
+            const dest = parsedDestinations[i]
             try {
-                const hubLocation = await geocodeAddress(hubAddress);
+              const result = await analyzeDestination(
+                hubLocation,
+                dest.location,
+                dest.location,
+                dest.days,
+                dest.time,
+              )
 
-                map.setCenter(hubLocation);
-                map.setZoom(12);
+              // Convert location to serializable format
+              const serializableResult = {
+                ...result,
+                location: {
+                  lat: result.location.lat(),
+                  lng: result.location.lng(),
+                },
+              }
+              results.push(serializableResult)
 
-                addMarker(hubLocation, 'H', '#EA4335');
+              const color = getColorForIndex(i, parsedDestinations.length)
+              addMarker(result.location, (i + 1).toString(), color)
+              drawRoute(hubLocation, result.location, color)
+            } catch (error) {
+              console.error(`Error analyzing ${dest.location}:`, error)
+              showError(`Failed to analyze ${dest.location}: ${error.message}`)
+            }
+          }
 
-                const results = [];
-                for (let i = 0; i < parsedDestinations.length; i++) {
-                    const dest = parsedDestinations[i];
-                    try {
-                        const result = await analyzeDestination(
-                            hubLocation,
-                            dest.location,
-                            dest.location,
-                            dest.days,
-                            dest.time
-                        );
-                        results.push(result);
+          results.sort((a, b) => a.medianTime - b.medianTime)
 
-                        const color = getColorForIndex(i, parsedDestinations.length);
-                        addMarker(result.location, (i + 1).toString(), color);
-                        drawRoute(hubLocation, result.location, color);
+          // Save results
+          analysisResults = results
 
-                    } catch (error) {
-                        console.error(`Error analyzing ${dest.location}:`, error);
-                        showError(`Failed to analyze ${dest.location}: ${error.message}`);
-                    }
-                }
-
-                results.sort((a, b) => a.medianTime - b.medianTime);
-
-                const resultsHTML = results.map((result, index) => {
-                    const daysStr = result.days.map(d => getDayName(d)).join(', ');
-                    return `
+          const resultsHTML = results
+            .map((result, index) => {
+              const daysStr = result.days.map(d => getDayName(d)).join(', ')
+              return `
                         <div class="destination-item">
                             <div class="name">${index + 1}. ${result.label}</div>
                             <div class="time">${daysStr} at ${formatTime(result.time)}</div>
-                            <div class="drive-time">Median: ${formatDuration(result.medianTime)} (${result.samples} samples)</div>
+                            <div class="drive-time">Median: ${formatDuration(
+                              result.medianTime,
+                            )} | Range: ${formatDuration(result.minTime)} - ${formatDuration(
+                result.maxTime,
+              )} (${result.samples} samples)</div>
                         </div>
-                    `;
-                }).join('');
+                    `
+            })
+            .join('')
 
-                document.getElementById('results').innerHTML = resultsHTML;
+          document.getElementById('results').innerHTML = resultsHTML
 
-                const bounds = new google.maps.LatLngBounds();
-                bounds.extend(hubLocation);
-                results.forEach(result => bounds.extend(result.location));
-                map.fitBounds(bounds);
+          const bounds = new google.maps.LatLngBounds()
+          bounds.extend(hubLocation)
+          results.forEach(result => {
+            bounds.extend(new google.maps.LatLng(result.location.lat, result.location.lng))
+          })
+          map.fitBounds(bounds)
 
-            } catch (error) {
-                showError(error.message);
-                console.error('Analysis error:', error);
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Analyze';
-            }
-        });
-
-        // Button handlers
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            if (saveState()) {
-                alert('State saved successfully!');
-            }
-        });
-
-        document.getElementById('clearBtn').addEventListener('click', clearState);
-
-        // Initialize
-        setupAutoSave();
-        loadState();
-
-        // Load Google Maps API with the provided API key
-        if (API_KEY) {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            document.body.appendChild(script);
-        } else {
-            showError('No API key provided. Please add ?apiKey=YOUR_API_KEY to the URL');
-            document.getElementById('analyzeBtn').disabled = true;
+          // Save state with results
+          saveState()
+        } catch (error) {
+          showError(error.message)
+          console.error('Analysis error:', error)
+        } finally {
+          button.disabled = false
+          button.textContent = 'Analyze'
         }
+      })
+
+      // Export state to JSON file
+      function exportState() {
+        const state = {
+          hubAddress: document.getElementById('hubAddress').value,
+          hubLabel: document.getElementById('hubLabel').value,
+          destinations: document.getElementById('destinations').value,
+          parsedDestinations: parsedDestinations,
+          analysisResults: analysisResults,
+          hubLocation: hubLocation ? {lat: hubLocation.lat(), lng: hubLocation.lng()} : null,
+          exportDate: new Date().toISOString(),
+        }
+
+        const dataStr = JSON.stringify(state, null, 2)
+        const dataBlob = new Blob([dataStr], {type: 'application/json'})
+        const url = URL.createObjectURL(dataBlob)
+
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `drivetime-analysis-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        console.log('State exported successfully')
+      }
+
+      // Import state from JSON file
+      function importState(jsonData) {
+        try {
+          const state = JSON.parse(jsonData)
+
+          // Restore form values
+          document.getElementById('hubAddress').value = state.hubAddress || ''
+          document.getElementById('hubLabel').value = state.hubLabel || ''
+          document.getElementById('destinations').value = state.destinations || ''
+
+          // Restore hub location
+          if (state.hubLocation) {
+            hubLocation = new google.maps.LatLng(state.hubLocation.lat, state.hubLocation.lng)
+          }
+
+          // Restore parsed destinations
+          parsedDestinations = state.parsedDestinations || []
+          if (parsedDestinations.length > 0) {
+            const parsedHTML = parsedDestinations
+              .map((dest, index) => {
+                const daysStr = dest.days.map(d => getDayName(d)).join(', ')
+                return `
+                  <div class="parsed-item">
+                    <div class="location">${index + 1}. ${dest.location}</div>
+                    <div class="schedule">${daysStr} at ${formatTime(dest.time)}</div>
+                  </div>
+                `
+              })
+              .join('')
+
+            document.getElementById('parsedList').innerHTML = parsedHTML
+            document.getElementById('parsedDestinations').style.display = 'block'
+            document.getElementById('analyzeBtn').disabled = false
+          }
+
+          // Restore analysis results
+          if (state.analysisResults && state.analysisResults.length > 0) {
+            analysisResults = state.analysisResults.map(recomputeStatistics)
+
+            const resultsHTML = analysisResults
+              .map((result, index) => {
+                const daysStr = result.days.map(d => getDayName(d)).join(', ')
+                return `
+                  <div class="destination-item">
+                    <div class="name">${index + 1}. ${result.label}</div>
+                    <div class="time">${daysStr} at ${formatTime(result.time)}</div>
+                    <div class="drive-time">Median: ${formatDuration(
+                      result.medianTime,
+                    )} | Range: ${formatDuration(result.minTime)} - ${formatDuration(
+                  result.maxTime,
+                )} (${result.samples} samples)</div>
+                  </div>
+                `
+              })
+              .join('')
+
+            document.getElementById('results').innerHTML = resultsHTML
+
+            // Restore map markers and routes
+            if (map && hubLocation) {
+              clearMap()
+              map.setCenter(hubLocation)
+              addMarker(hubLocation, 'H', '#EA4335')
+
+              analysisResults.forEach((result, index) => {
+                const resultLocation = new google.maps.LatLng(
+                  result.location.lat,
+                  result.location.lng,
+                )
+                const color = getColorForIndex(index, analysisResults.length)
+                addMarker(resultLocation, (index + 1).toString(), color)
+                drawRoute(hubLocation, resultLocation, color)
+              })
+
+              const bounds = new google.maps.LatLngBounds()
+              bounds.extend(hubLocation)
+              analysisResults.forEach(result => {
+                bounds.extend(new google.maps.LatLng(result.location.lat, result.location.lng))
+              })
+              map.fitBounds(bounds)
+            }
+          }
+
+          // Save to localStorage
+          saveState()
+
+          alert('State imported successfully!')
+          console.log('State imported successfully')
+        } catch (error) {
+          console.error('Error importing state:', error)
+          showError('Failed to import state: ' + error.message)
+        }
+      }
+
+      // Button handlers
+      document.getElementById('saveBtn').addEventListener('click', () => {
+        if (saveState()) {
+          alert('State saved successfully!')
+        }
+      })
+
+      document.getElementById('exportBtn').addEventListener('click', exportState)
+
+      document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('importFileInput').click()
+      })
+
+      document.getElementById('importFileInput').addEventListener('change', event => {
+        const file = event.target.files[0]
+        if (!file) return
+
+        const reader = new FileReader()
+        reader.onload = e => {
+          importState(e.target.result)
+          // Reset file input
+          event.target.value = ''
+        }
+        reader.readAsText(file)
+      })
+
+      document.getElementById('clearBtn').addEventListener('click', clearState)
+
+      // Initialize
+      setupAutoSave()
+
+      // Load Google Maps API with the provided API key
+      if (API_KEY) {
+        const script = document.createElement('script')
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`
+        script.async = true
+        script.defer = true
+        document.body.appendChild(script)
+      } else {
+        showError('No API key provided. Please add ?apiKey=YOUR_API_KEY to the URL')
+        document.getElementById('analyzeBtn').disabled = true
+      }
     </script>
-</body>
+  </body>
 </html>
