@@ -237,12 +237,37 @@
             color: #555;
             margin-bottom: 10px;
         }
+
+        .button-clear {
+            background: #d93025;
+        }
+
+        .button-clear:hover {
+            background: #b3251e;
+        }
+
+        .state-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .state-buttons button {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="sidebar">
             <h1>Drive Time Analyzer</h1>
+
+            <div class="state-buttons">
+                <button id="saveBtn" class="button-secondary">Save</button>
+                <button id="clearBtn" class="button-clear">Clear</button>
+            </div>
 
             <div class="form-group">
                 <label for="hubAddress">Hub Address</label>
@@ -299,7 +324,7 @@
             }
 
             map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 37.7749, lng: -122.4194 },
+                center: { lat: 32.7767, lng: -96.7970 }, // Dallas, TX
                 zoom: 12
             });
         }
@@ -556,6 +581,113 @@
             return `${displayHour}:${minute.toString().padStart(2, '0')} ${meridiem}`;
         }
 
+        // State management
+        const STATE_KEY = 'driveTimeAnalyzerState';
+
+        function saveState() {
+            const state = {
+                hubAddress: document.getElementById('hubAddress').value,
+                hubLabel: document.getElementById('hubLabel').value,
+                destinations: document.getElementById('destinations').value,
+                parsedDestinations: parsedDestinations
+            };
+
+            try {
+                localStorage.setItem(STATE_KEY, JSON.stringify(state));
+                console.log('State saved successfully');
+                return true;
+            } catch (error) {
+                console.error('Error saving state:', error);
+                showError('Failed to save state to localStorage');
+                return false;
+            }
+        }
+
+        function loadState() {
+            try {
+                const savedState = localStorage.getItem(STATE_KEY);
+                if (!savedState) {
+                    return false;
+                }
+
+                const state = JSON.parse(savedState);
+
+                // Restore form values
+                document.getElementById('hubAddress').value = state.hubAddress || '';
+                document.getElementById('hubLabel').value = state.hubLabel || '';
+                document.getElementById('destinations').value = state.destinations || '';
+
+                // Restore parsed destinations
+                if (state.parsedDestinations && state.parsedDestinations.length > 0) {
+                    parsedDestinations = state.parsedDestinations;
+
+                    // Display parsed destinations
+                    const parsedHTML = parsedDestinations.map((dest, index) => {
+                        const daysStr = dest.days.map(d => getDayName(d)).join(', ');
+                        return `
+                            <div class="parsed-item">
+                                <div class="location">${index + 1}. ${dest.location}</div>
+                                <div class="schedule">${daysStr} at ${formatTime(dest.time)}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    document.getElementById('parsedList').innerHTML = parsedHTML;
+                    document.getElementById('parsedDestinations').style.display = 'block';
+                    document.getElementById('analyzeBtn').disabled = false;
+                }
+
+                console.log('State loaded successfully');
+                return true;
+            } catch (error) {
+                console.error('Error loading state:', error);
+                showError('Failed to load state from localStorage');
+                return false;
+            }
+        }
+
+        function clearState() {
+            if (confirm('Are you sure you want to clear all saved data?')) {
+                try {
+                    localStorage.removeItem(STATE_KEY);
+                    document.getElementById('hubAddress').value = '';
+                    document.getElementById('hubLabel').value = '';
+                    document.getElementById('destinations').value = '';
+                    document.getElementById('parsedList').innerHTML = '';
+                    document.getElementById('parsedDestinations').style.display = 'none';
+                    document.getElementById('results').innerHTML = '';
+                    parsedDestinations = [];
+                    document.getElementById('analyzeBtn').disabled = true;
+                    clearMap();
+                    console.log('State cleared successfully');
+                } catch (error) {
+                    console.error('Error clearing state:', error);
+                    showError('Failed to clear state');
+                }
+            }
+        }
+
+        // Auto-save when inputs change
+        function setupAutoSave() {
+            const debounce = (func, wait) => {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            };
+
+            const debouncedSave = debounce(saveState, 1000);
+
+            document.getElementById('hubAddress').addEventListener('input', debouncedSave);
+            document.getElementById('hubLabel').addEventListener('input', debouncedSave);
+            document.getElementById('destinations').addEventListener('input', debouncedSave);
+        }
+
         // Parse button handler
         document.getElementById('parseBtn').addEventListener('click', () => {
             const destinationsText = document.getElementById('destinations').value.trim();
@@ -600,6 +732,9 @@
             document.getElementById('parsedDestinations').style.display = 'block';
             document.getElementById('analyzeBtn').disabled = false;
             document.getElementById('results').innerHTML = '';
+
+            // Save state after parsing
+            saveState();
         });
 
         // Analyze button handler
@@ -683,6 +818,19 @@
                 button.textContent = 'Analyze';
             }
         });
+
+        // Button handlers
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            if (saveState()) {
+                alert('State saved successfully!');
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', clearState);
+
+        // Initialize
+        setupAutoSave();
+        loadState();
 
         // Load Google Maps API with the provided API key
         if (API_KEY) {
