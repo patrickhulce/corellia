@@ -2,12 +2,12 @@ import { useFloorplan } from '../context/FloorplanContext'
 
 export function Toolbar() {
   const { state, dispatch } = useFloorplan()
-  const { selectedId } = state
-  const disabled = !selectedId
+  const { selectedIds } = state
+  const disabled = selectedIds.length === 0
 
   const handleAction = (actionType) => {
-    if (!selectedId) return
-    dispatch({ type: actionType, id: selectedId })
+    if (selectedIds.length === 0) return
+    dispatch({ type: actionType, id: selectedIds[0] })
   }
 
   return (

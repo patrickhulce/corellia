@@ -1,6 +1,6 @@
 export const initialState = {
   rooms: [],
-  selectedId: null,
+  selectedIds: [],
   unit: 'ft',
   pixelsPerUnit: 40,
   gridCols: 200,
@@ -11,7 +11,7 @@ export const initialState = {
 export function floorplanReducer(state, action) {
   switch (action.type) {
     case 'ADD_ROOM':
-      return { ...state, rooms: [...state.rooms, action.room], selectedId: action.room.id }
+      return { ...state, rooms: [...state.rooms, action.room], selectedIds: [action.room.id] }
 
     case 'MOVE_ROOM':
       return {
@@ -21,17 +21,43 @@ export function floorplanReducer(state, action) {
         ),
       }
 
+    case 'MOVE_ROOMS':
+      return {
+        ...state,
+        rooms: state.rooms.map((r) => {
+          if (!action.ids.includes(r.id)) return r
+          const gridCols = state.gridCols
+          const gridRows = state.gridRows
+          return {
+            ...r,
+            x: Math.max(0, Math.min(r.x + action.dx, gridCols - r.widthFt)),
+            y: Math.max(0, Math.min(r.y + action.dy, gridRows - r.heightFt)),
+          }
+        }),
+      }
+
     case 'SELECT_ROOM':
-      return { ...state, selectedId: action.id }
+      return { ...state, selectedIds: [action.id] }
+
+    case 'TOGGLE_ROOM_SELECTION':
+      return {
+        ...state,
+        selectedIds: state.selectedIds.includes(action.id)
+          ? state.selectedIds.filter((id) => id !== action.id)
+          : [...state.selectedIds, action.id],
+      }
+
+    case 'SELECT_ROOMS':
+      return { ...state, selectedIds: action.ids }
 
     case 'DESELECT':
-      return { ...state, selectedId: null }
+      return { ...state, selectedIds: [] }
 
     case 'DELETE_ROOM':
       return {
         ...state,
         rooms: state.rooms.filter((r) => r.id !== action.id),
-        selectedId: state.selectedId === action.id ? null : state.selectedId,
+        selectedIds: state.selectedIds.filter((id) => id !== action.id),
       }
 
     case 'RESIZE_ROOM':
@@ -99,8 +125,15 @@ export function floorplanReducer(state, action) {
         ),
       }
 
-    case 'LOAD_STATE':
-      return { ...initialState, ...action.state }
+    case 'LOAD_STATE': {
+      const loaded = { ...initialState, ...action.state }
+      // Migrate old selectedId → selectedIds
+      if ('selectedId' in action.state && !('selectedIds' in action.state)) {
+        loaded.selectedIds = action.state.selectedId ? [action.state.selectedId] : []
+        delete loaded.selectedId
+      }
+      return loaded
+    }
 
     case 'CLEAR_STATE':
       return { ...initialState }

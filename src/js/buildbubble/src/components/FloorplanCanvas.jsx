@@ -12,7 +12,7 @@ const FT_TO_M = 0.3048
 
 export function FloorplanCanvas() {
   const { state, dispatch } = useFloorplan()
-  const { rooms, selectedId, pixelsPerUnit: ppu, gridCols, gridRows, unit } = state
+  const { rooms, selectedIds, pixelsPerUnit: ppu, gridCols, gridRows, unit } = state
 
   const containerRef = useRef(null)
   const svgRef = useRef(null)
@@ -25,6 +25,10 @@ export function FloorplanCanvas() {
   const drawStart = useRef(null)
   const drawRectRef = useRef(null)
   const [drawRect, setDrawRect] = useState(null)
+
+  // Marquee selection state
+  const marqueeStart = useRef(null)
+  const [marqueeRect, setMarqueeRect] = useState(null)
 
   // Type cycling during drag
   const drawTypeIdx = useRef(ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other'))
@@ -39,10 +43,12 @@ export function FloorplanCanvas() {
   // Snap guides
   const roomsRef = useRef(rooms)
   roomsRef.current = rooms
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
   const [snapGuides, setSnapGuides] = useState({ x: [], y: [] })
   const handleSnapGuidesChange = useCallback((guides) => setSnapGuides(guides), [])
 
-  const { handlePointerDown } = useDrag(svgRef, dispatch, roomsRef, handleSnapGuidesChange)
+  const { handlePointerDown } = useDrag(svgRef, dispatch, roomsRef, handleSnapGuidesChange, selectedIdsRef)
   const { handleResizeStart } = useResize(svgRef, dispatch, roomsRef, handleSnapGuidesChange)
 
   const svgW = gridCols * ppu
@@ -102,15 +108,17 @@ export function FloorplanCanvas() {
   // Keyboard delete handler
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault()
-        dispatch({ type: 'DELETE_ROOM', id: selectedId })
+        for (const id of selectedIds) {
+          dispatch({ type: 'DELETE_ROOM', id })
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedId, dispatch])
+  }, [selectedIds, dispatch])
 
   // Center the view on the grid on first mount
   useEffect(() => {
@@ -152,7 +160,7 @@ export function FloorplanCanvas() {
     setIsPanning(false)
   }, [])
 
-  // SVG background: start drag-to-create
+  // SVG background: start drag-to-create or marquee select
   const handleSvgPointerDown = useCallback((e) => {
     if (e.button !== 0) return
     if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
@@ -163,14 +171,22 @@ export function FloorplanCanvas() {
     pt.y = e.clientY
     const pos = pt.matrixTransform(svg.getScreenCTM().inverse())
 
+    const gridX = Math.floor(pos.x / ppu)
+    const gridY = Math.floor(pos.y / ppu)
+
+    if (e.shiftKey) {
+      // Start marquee selection
+      marqueeStart.current = { gridX, gridY }
+      setMarqueeRect(null)
+      svg.setPointerCapture(e.pointerId)
+      return
+    }
+
     // Reset type cycling
     drawTypeIdx.current = ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other')
     setDrawType('other')
 
-    drawStart.current = {
-      gridX: Math.floor(pos.x / ppu),
-      gridY: Math.floor(pos.y / ppu),
-    }
+    drawStart.current = { gridX, gridY }
     drawRectRef.current = null
     setDrawRect(null)
 
@@ -178,18 +194,26 @@ export function FloorplanCanvas() {
     dispatch({ type: 'DESELECT' })
   }, [ppu, dispatch])
 
-  // SVG: update drag-to-create preview
+  // SVG: update drag-to-create preview or marquee
   const handleSvgPointerMove = useCallback((e) => {
-    if (!drawStart.current) return
-
     const svg = svgRef.current
     const pt = svg.createSVGPoint()
     pt.x = e.clientX
     pt.y = e.clientY
     const pos = pt.matrixTransform(svg.getScreenCTM().inverse())
-
     const curGridX = Math.floor(pos.x / ppu)
     const curGridY = Math.floor(pos.y / ppu)
+
+    if (marqueeStart.current) {
+      const x = Math.min(marqueeStart.current.gridX, curGridX)
+      const y = Math.min(marqueeStart.current.gridY, curGridY)
+      const w = Math.abs(curGridX - marqueeStart.current.gridX)
+      const h = Math.abs(curGridY - marqueeStart.current.gridY)
+      setMarqueeRect({ x, y, w, h })
+      return
+    }
+
+    if (!drawStart.current) return
 
     const x = Math.min(drawStart.current.gridX, curGridX)
     const y = Math.min(drawStart.current.gridY, curGridY)
@@ -213,9 +237,33 @@ export function FloorplanCanvas() {
     return `${typeLabel} ${nextNum}`
   }, [rooms])
 
-  // SVG: finish drag-to-create, require 2x2 minimum
+  // SVG: finish drag-to-create or marquee, require 2x2 minimum for rooms
   const handleSvgPointerUp = useCallback((e) => {
     if (e.button !== 0) return
+
+    // Finish marquee selection
+    if (marqueeStart.current) {
+      const mq = marqueeRect
+      marqueeStart.current = null
+      setMarqueeRect(null)
+      if (!mq || (mq.w === 0 && mq.h === 0)) {
+        dispatch({ type: 'DESELECT' })
+        return
+      }
+      const mqRight = mq.x + mq.w
+      const mqBottom = mq.y + mq.h
+      const hitIds = rooms
+        .filter((r) => {
+          const rRight = r.x + r.widthFt
+          const rBottom = r.y + r.heightFt
+          return !(rRight < mq.x || r.x > mqRight || rBottom < mq.y || r.y > mqBottom)
+        })
+        .map((r) => r.id)
+      const merged = [...new Set([...selectedIds, ...hitIds])]
+      dispatch({ type: merged.length > 0 ? 'SELECT_ROOMS' : 'DESELECT', ids: merged })
+      return
+    }
+
     if (!drawStart.current) return
 
     const rect = drawRectRef.current
@@ -236,10 +284,9 @@ export function FloorplanCanvas() {
         heightFt: rect.h,
         x: Math.max(0, Math.min(rect.x, gridCols - rect.w)),
         y: Math.max(0, Math.min(rect.y, gridRows - rect.h)),
-        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
       },
     })
-  }, [gridCols, gridRows, dispatch, generateRoomName, state.defaultCeilingHeightFt])
+  }, [gridCols, gridRows, dispatch, generateRoomName, rooms, marqueeRect, selectedIds])
 
   // Double-click on SVG: open room type modal
   const handleSvgDoubleClick = useCallback((e) => {
@@ -272,11 +319,10 @@ export function FloorplanCanvas() {
         heightFt: dims.heightFt,
         x: Math.max(0, Math.min(modalPos.gridX, gridCols - dims.widthFt)),
         y: Math.max(0, Math.min(modalPos.gridY, gridRows - dims.heightFt)),
-        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
       },
     })
     setModalPos(null)
-  }, [modalPos, gridCols, gridRows, dispatch, generateRoomName, state.defaultCeilingHeightFt])
+  }, [modalPos, gridCols, gridRows, dispatch, generateRoomName])
 
   // Room double-click: open edit modal
   const handleRoomDoubleClick = useCallback((room) => {
@@ -337,18 +383,21 @@ export function FloorplanCanvas() {
           <rect width={svgW} height={svgH} fill="var(--bg)" />
           <rect width={svgW} height={svgH} fill="url(#grid-major)" />
 
-          {rooms.map((room) => (
-            <RoomRect
-              key={room.id}
-              room={room}
-              isSelected={room.id === selectedId}
-              pixelsPerUnit={ppu}
-              unit={unit}
-              onPointerDown={handlePointerDown}
-              onResizeStart={room.id === selectedId ? handleResizeStart : null}
-              onDoubleClick={handleRoomDoubleClick}
-            />
-          ))}
+          {rooms.map((room) => {
+            const isSelected = selectedIds.includes(room.id)
+            return (
+              <RoomRect
+                key={room.id}
+                room={room}
+                isSelected={isSelected}
+                pixelsPerUnit={ppu}
+                unit={unit}
+                onPointerDown={handlePointerDown}
+                onResizeStart={isSelected && selectedIds.length === 1 ? handleResizeStart : null}
+                onDoubleClick={handleRoomDoubleClick}
+              />
+            )
+          })}
 
           {/* Snap guide lines */}
           {snapGuides.x.map((gx) => (
@@ -379,6 +428,23 @@ export function FloorplanCanvas() {
               opacity="0.7"
             />
           ))}
+
+          {/* Marquee selection rect */}
+          {marqueeRect && marqueeRect.w > 0 && marqueeRect.h > 0 && (
+            <rect
+              x={marqueeRect.x * ppu}
+              y={marqueeRect.y * ppu}
+              width={marqueeRect.w * ppu}
+              height={marqueeRect.h * ppu}
+              fill="var(--accent)"
+              fillOpacity="0.08"
+              stroke="var(--accent)"
+              strokeWidth="1.5"
+              strokeDasharray="6 3"
+              pointerEvents="none"
+              rx={2}
+            />
+          )}
 
           {drawRect && drawRect.w > 0 && drawRect.h > 0 && (() => {
             const valid = drawRect.w >= 2 && drawRect.h >= 2

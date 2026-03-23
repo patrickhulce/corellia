@@ -3,14 +3,30 @@ import { computeSnap, classifyDirection } from '../utils/snapEdges'
 
 const SNAP_THRESHOLD_PX = 30
 
-export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
+export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange, selectedIdsRef) {
   const handlePointerDown = useCallback(
     (e, room) => {
       e.stopPropagation()
       const svg = svgRef.current
       if (!svg) return
 
-      dispatch({ type: 'SELECT_ROOM', id: room.id })
+      const selectedIds = selectedIdsRef?.current ?? []
+
+      // Cmd+click (Mac) or Ctrl+click (Windows): toggle selection, no drag
+      if (e.metaKey || e.ctrlKey) {
+        dispatch({ type: 'TOGGLE_ROOM_SELECTION', id: room.id })
+        return
+      }
+
+      // If room is not already selected, single-select it
+      const alreadySelected = selectedIds.includes(room.id)
+      if (!alreadySelected) {
+        dispatch({ type: 'SELECT_ROOM', id: room.id })
+      }
+
+      // Determine which rooms will be dragged
+      const dragIds = alreadySelected && selectedIds.length > 1 ? selectedIds : [room.id]
+      const isGroupDrag = dragIds.length > 1
 
       const pt = svg.createSVGPoint()
       const toSVG = (clientX, clientY) => {
@@ -26,6 +42,10 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
       let prevClientX = e.clientX
       let prevClientY = e.clientY
 
+      // For group drag, track cumulative applied delta to compute incremental moves
+      let appliedDx = 0
+      let appliedDy = 0
+
       e.currentTarget.setPointerCapture(e.pointerId)
 
       const onMove = (moveE) => {
@@ -37,9 +57,6 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
         const dx = Math.round((cur.x - origin.x) / ppu)
         const dy = Math.round((cur.y - origin.y) / ppu)
 
-        let newX = Math.max(0, Math.min(startX + dx, gridCols - room.widthFt))
-        let newY = Math.max(0, Math.min(startY + dy, gridRows - room.heightFt))
-
         // Classify direction from screen-space mouse delta
         const mouseDx = moveE.clientX - prevClientX
         const mouseDy = moveE.clientY - prevClientY
@@ -47,17 +64,59 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
         prevClientX = moveE.clientX
         prevClientY = moveE.clientY
 
-        // Snap
-        const otherRooms = (roomsRef?.current ?? []).filter((r) => r.id !== room.id)
-        const snapThreshold = SNAP_THRESHOLD_PX / ppu
-        const candidate = { x: newX, y: newY, widthFt: room.widthFt, heightFt: room.heightFt }
-        const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
+        const allRooms = roomsRef?.current ?? []
 
-        newX = Math.max(0, Math.min(newX + snap.dx, gridCols - room.widthFt))
-        newY = Math.max(0, Math.min(newY + snap.dy, gridRows - room.heightFt))
+        if (isGroupDrag) {
+          // Compute group bounding box at the proposed new position
+          const selected = allRooms.filter((r) => dragIds.includes(r.id))
+          const bboxX = Math.min(...selected.map((r) => r.x))
+          const bboxY = Math.min(...selected.map((r) => r.y))
+          const bboxRight = Math.max(...selected.map((r) => r.x + r.widthFt))
+          const bboxBottom = Math.max(...selected.map((r) => r.y + r.heightFt))
 
-        onSnapGuidesChange?.(snap.guides)
-        dispatch({ type: 'MOVE_ROOM', id: room.id, x: newX, y: newY })
+          let newBboxX = bboxX + dx - appliedDx
+          let newBboxY = bboxY + dy - appliedDy
+          const bboxW = bboxRight - bboxX
+          const bboxH = bboxBottom - bboxY
+
+          // Clamp to grid
+          newBboxX = Math.max(0, Math.min(newBboxX, gridCols - bboxW))
+          newBboxY = Math.max(0, Math.min(newBboxY, gridRows - bboxH))
+
+          // Snap using group bbox
+          const otherRooms = allRooms.filter((r) => !dragIds.includes(r.id))
+          const snapThreshold = SNAP_THRESHOLD_PX / ppu
+          const candidate = { x: newBboxX, y: newBboxY, widthFt: bboxW, heightFt: bboxH }
+          const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
+
+          newBboxX = Math.max(0, Math.min(newBboxX + snap.dx, gridCols - bboxW))
+          newBboxY = Math.max(0, Math.min(newBboxY + snap.dy, gridRows - bboxH))
+
+          const moveDx = newBboxX - bboxX
+          const moveDy = newBboxY - bboxY
+
+          onSnapGuidesChange?.(snap.guides)
+          if (moveDx !== 0 || moveDy !== 0) {
+            dispatch({ type: 'MOVE_ROOMS', ids: dragIds, dx: moveDx, dy: moveDy })
+            appliedDx += moveDx
+            appliedDy += moveDy
+          }
+        } else {
+          // Single room drag
+          let newX = Math.max(0, Math.min(startX + dx, gridCols - room.widthFt))
+          let newY = Math.max(0, Math.min(startY + dy, gridRows - room.heightFt))
+
+          const otherRooms = allRooms.filter((r) => r.id !== room.id)
+          const snapThreshold = SNAP_THRESHOLD_PX / ppu
+          const candidate = { x: newX, y: newY, widthFt: room.widthFt, heightFt: room.heightFt }
+          const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
+
+          newX = Math.max(0, Math.min(newX + snap.dx, gridCols - room.widthFt))
+          newY = Math.max(0, Math.min(newY + snap.dy, gridRows - room.heightFt))
+
+          onSnapGuidesChange?.(snap.guides)
+          dispatch({ type: 'MOVE_ROOM', id: room.id, x: newX, y: newY })
+        }
       }
 
       const onUp = () => {
@@ -69,7 +128,7 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
       svg.addEventListener('pointermove', onMove)
       svg.addEventListener('pointerup', onUp)
     },
-    [svgRef, dispatch, roomsRef, onSnapGuidesChange]
+    [svgRef, dispatch, roomsRef, onSnapGuidesChange, selectedIdsRef]
   )
 
   return { handlePointerDown }

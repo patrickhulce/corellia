@@ -18,7 +18,7 @@ const OUTDOOR_TYPES = ['grass', 'driveway', 'patio', 'pool', 'pergola']
 
 export function RoomListItem({ room }) {
   const { state, dispatch } = useFloorplan()
-  const isSelected = state.selectedId === room.id
+  const isSelected = state.selectedIds.includes(room.id)
   const { unit } = state
 
   const colors = TYPE_COLORS[room.type] ?? TYPE_COLORS.other
@@ -43,7 +43,13 @@ export function RoomListItem({ room }) {
       className={`flex flex-col px-3 py-2 rounded-lg cursor-pointer transition-colors ${
         isSelected ? 'bg-[var(--accent-bg)]' : 'hover:bg-[var(--social-bg)]'
       }`}
-      onClick={() => dispatch({ type: 'SELECT_ROOM', id: room.id })}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey) {
+          dispatch({ type: 'TOGGLE_ROOM_SELECTION', id: room.id })
+        } else {
+          dispatch({ type: 'SELECT_ROOM', id: room.id })
+        }
+      }}
     >
       <div className="flex items-center gap-2">
         <div
