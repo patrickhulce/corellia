@@ -2,26 +2,10 @@ import { useFloorplan } from '../context/FloorplanContext'
 
 export function ScaleControl() {
   const { state, dispatch } = useFloorplan()
-  const { pixelsPerUnit, unit } = state
+  const { unit } = state
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <div className="flex justify-between items-center">
-          <label className="text-xs font-medium text-[var(--text)]">Zoom</label>
-          <span className="text-xs text-[var(--text)]">{pixelsPerUnit}px/{unit}</span>
-        </div>
-        <input
-          type="range"
-          min="20"
-          max="80"
-          step="5"
-          value={pixelsPerUnit}
-          onChange={(e) => dispatch({ type: 'SET_PIXELS_PER_UNIT', value: Number(e.target.value) })}
-          className="w-full accent-[var(--accent)]"
-        />
-      </div>
-
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-[var(--text)]">Unit</label>
         <div className="flex gap-2">
@@ -40,6 +24,9 @@ export function ScaleControl() {
           ))}
         </div>
       </div>
+      <p className="text-xs text-[var(--text)] opacity-60">
+        Scroll to zoom · Middle-drag to pan
+      </p>
     </div>
   )
 }
