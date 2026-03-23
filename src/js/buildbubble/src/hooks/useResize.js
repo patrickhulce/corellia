@@ -1,6 +1,9 @@
 import { useCallback } from 'react'
+import { computeResizeSnap } from '../utils/snapEdges'
 
-export function useResize(svgRef, dispatch) {
+const SNAP_THRESHOLD_PX = 30
+
+export function useResize(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
   const handleResizeStart = useCallback(
     (e, room, edge) => {
       e.stopPropagation()
@@ -49,18 +52,44 @@ export function useResize(svgRef, dispatch) {
           newH = Math.max(1, Math.min(startH + dy, gridRows - startY))
         }
 
+        // Snap
+        const otherRooms = (roomsRef?.current ?? []).filter((r) => r.id !== room.id)
+        const snapThreshold = SNAP_THRESHOLD_PX / ppu
+        const candidate = { x: newX, y: newY, widthFt: newW, heightFt: newH }
+        const snap = computeResizeSnap(candidate, otherRooms, edge, snapThreshold)
+
+        // Apply snap offset to the correct dimension
+        if (snap.dx !== 0) {
+          if (edge.includes('e')) {
+            newW = Math.max(1, newW + snap.dx)
+          } else if (edge.includes('w')) {
+            newX = newX + snap.dx
+            newW = Math.max(1, newW - snap.dx)
+          }
+        }
+        if (snap.dy !== 0) {
+          if (edge === 's' || edge === 'se' || edge === 'sw') {
+            newH = Math.max(1, newH + snap.dy)
+          } else if (edge === 'n' || edge === 'ne' || edge === 'nw') {
+            newY = newY + snap.dy
+            newH = Math.max(1, newH - snap.dy)
+          }
+        }
+
+        onSnapGuidesChange?.(snap.guides)
         dispatch({ type: 'RESIZE_ROOM', id: room.id, x: newX, y: newY, widthFt: newW, heightFt: newH })
       }
 
       const onUp = () => {
         svg.removeEventListener('pointermove', onMove)
         svg.removeEventListener('pointerup', onUp)
+        onSnapGuidesChange?.({ x: [], y: [] })
       }
 
       svg.addEventListener('pointermove', onMove)
       svg.addEventListener('pointerup', onUp)
     },
-    [svgRef, dispatch]
+    [svgRef, dispatch, roomsRef, onSnapGuidesChange]
   )
 
   return { handleResizeStart }

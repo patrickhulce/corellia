@@ -4,6 +4,8 @@ import { useDrag } from '../hooks/useDrag'
 import { useResize } from '../hooks/useResize'
 import { RoomRect } from './RoomRect'
 import { RoomTypeModal } from './RoomTypeModal'
+import { RoomEditModal } from './RoomEditModal'
+import { Toolbar } from './Toolbar'
 import { ROOM_TYPE_OPTIONS, TYPE_COLORS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
 
 const FT_TO_M = 0.3048
@@ -31,8 +33,17 @@ export function FloorplanCanvas() {
   // Double-click modal
   const [modalPos, setModalPos] = useState(null)
 
-  const { handlePointerDown } = useDrag(svgRef, dispatch)
-  const { handleResizeStart } = useResize(svgRef, dispatch)
+  // Room edit modal (double-click on existing room)
+  const [editingRoom, setEditingRoom] = useState(null)
+
+  // Snap guides
+  const roomsRef = useRef(rooms)
+  roomsRef.current = rooms
+  const [snapGuides, setSnapGuides] = useState({ x: [], y: [] })
+  const handleSnapGuidesChange = useCallback((guides) => setSnapGuides(guides), [])
+
+  const { handlePointerDown } = useDrag(svgRef, dispatch, roomsRef, handleSnapGuidesChange)
+  const { handleResizeStart } = useResize(svgRef, dispatch, roomsRef, handleSnapGuidesChange)
 
   const svgW = gridCols * ppu
   const svgH = gridRows * ppu
@@ -87,6 +98,19 @@ export function FloorplanCanvas() {
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
+
+  // Keyboard delete handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        e.preventDefault()
+        dispatch({ type: 'DELETE_ROOM', id: selectedId })
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedId, dispatch])
 
   // Center the view on the grid on first mount
   useEffect(() => {
@@ -254,6 +278,15 @@ export function FloorplanCanvas() {
     setModalPos(null)
   }, [modalPos, gridCols, gridRows, dispatch, generateRoomName, state.defaultCeilingHeightFt])
 
+  // Room double-click: open edit modal
+  const handleRoomDoubleClick = useCallback((room) => {
+    setEditingRoom(room)
+  }, [])
+
+  const handleEditSave = useCallback((id, updates) => {
+    dispatch({ type: 'UPDATE_ROOM', id, updates })
+  }, [dispatch])
+
   // Draw preview colors
   const previewColors = TYPE_COLORS[drawType] ?? TYPE_COLORS.other
   const previewLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === drawType)?.label ?? 'Room'
@@ -313,12 +346,43 @@ export function FloorplanCanvas() {
               unit={unit}
               onPointerDown={handlePointerDown}
               onResizeStart={room.id === selectedId ? handleResizeStart : null}
+              onDoubleClick={handleRoomDoubleClick}
+            />
+          ))}
+
+          {/* Snap guide lines */}
+          {snapGuides.x.map((gx) => (
+            <line
+              key={`sx-${gx}`}
+              x1={gx * ppu}
+              y1={0}
+              x2={gx * ppu}
+              y2={svgH}
+              stroke="var(--accent)"
+              strokeWidth="1"
+              strokeDasharray="6 4"
+              pointerEvents="none"
+              opacity="0.7"
+            />
+          ))}
+          {snapGuides.y.map((gy) => (
+            <line
+              key={`sy-${gy}`}
+              x1={0}
+              y1={gy * ppu}
+              x2={svgW}
+              y2={gy * ppu}
+              stroke="var(--accent)"
+              strokeWidth="1"
+              strokeDasharray="6 4"
+              pointerEvents="none"
+              opacity="0.7"
             />
           ))}
 
           {drawRect && drawRect.w > 0 && drawRect.h > 0 && (() => {
             const valid = drawRect.w >= 2 && drawRect.h >= 2
-            const colors = valid ? previewColors : { fill: 'rgba(239,68,68,0.10)', stroke: 'rgb(239,68,68)' }
+            const strokeColor = valid ? previewColors.stroke : 'rgb(239,68,68)'
             const px = drawRect.x * ppu
             const py = drawRect.y * ppu
             const pw = drawRect.w * ppu
@@ -334,12 +398,11 @@ export function FloorplanCanvas() {
                   y={py}
                   width={pw}
                   height={ph}
-                  fill={valid ? colors.fill : colors.fill}
-                  stroke={colors.stroke}
+                  fill="none"
+                  stroke={strokeColor}
                   strokeWidth="2"
                   strokeDasharray="6 3"
                   rx={2}
-                  opacity={valid ? 0.85 : 1}
                 />
                 {pw > 30 && ph > 20 && (
                   <>
@@ -350,7 +413,10 @@ export function FloorplanCanvas() {
                       dominantBaseline="middle"
                       fontSize={Math.min(13, (pw / previewLabel.length) * 1.4)}
                       fontWeight="600"
-                      fill={valid ? previewColors.stroke : 'rgb(239,68,68)'}
+                      fill={strokeColor}
+                      stroke="white"
+                      strokeWidth="3"
+                      paintOrder="stroke"
                     >
                       {valid ? previewLabel : 'Too small'}
                     </text>
@@ -361,8 +427,11 @@ export function FloorplanCanvas() {
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fontSize={10}
-                        fill={valid ? previewColors.stroke : 'rgb(239,68,68)'}
-                        opacity={0.8}
+                        fill={strokeColor}
+                        stroke="white"
+                        strokeWidth="3"
+                        paintOrder="stroke"
+                        opacity={0.9}
                       >
                         {displayW} × {displayH} {unit}
                       </text>
@@ -381,6 +450,16 @@ export function FloorplanCanvas() {
           onClose={() => setModalPos(null)}
         />
       )}
+
+      {editingRoom && (
+        <RoomEditModal
+          room={editingRoom}
+          onSave={handleEditSave}
+          onClose={() => setEditingRoom(null)}
+        />
+      )}
+
+      <Toolbar />
     </div>
   )
 }
