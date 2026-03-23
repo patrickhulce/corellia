@@ -1,100 +1,149 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useFloorplan } from '../context/FloorplanContext'
-import { ROOM_TYPE_OPTIONS } from '../constants/roomTypes'
-
-const FT_TO_M = 0.3048
-
-const defaultForm = { name: '', type: 'living', width: '', height: '' }
+import { ROOM_TYPE_OPTIONS, DEFAULT_DIMENSIONS, TYPE_COLORS } from '../constants/roomTypes'
 
 export function AddRoomForm() {
   const { state, dispatch } = useFloorplan()
-  const { unit } = state
-  const [form, setForm] = useState(defaultForm)
-  const [error, setError] = useState('')
+  const { rooms, gridCols } = state
+  const [batch, setBatch] = useState({}) // { type: count }
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const w = parseFloat(form.width)
-    const h = parseFloat(form.height)
-    if (!form.name.trim()) return setError('Name is required')
-    if (!w || w <= 0) return setError('Width must be positive')
-    if (!h || h <= 0) return setError('Height must be positive')
-
-    // Always store in feet internally
-    const widthFt = unit === 'm' ? w / FT_TO_M : w
-    const heightFt = unit === 'm' ? h / FT_TO_M : h
-
-    dispatch({
-      type: 'ADD_ROOM',
-      room: {
-        id: crypto.randomUUID(),
-        name: form.name.trim(),
-        type: form.type,
-        widthFt: Math.round(widthFt * 10) / 10,
-        heightFt: Math.round(heightFt * 10) / 10,
-        x: 0,
-        y: 0,
-        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
-      },
-    })
-    setForm(defaultForm)
-    setError('')
+  const handleTypeClick = (typeValue) => {
+    setBatch((prev) => ({
+      ...prev,
+      [typeValue]: (prev[typeValue] || 0) + 1,
+    }))
   }
 
+  const handleRemoveType = (typeValue) => {
+    setBatch((prev) => {
+      const newBatch = { ...prev }
+      delete newBatch[typeValue]
+      return newBatch
+    })
+  }
+
+  const generateRoomName = useCallback((typeValue) => {
+    const typeLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === typeValue)?.label ?? 'Room'
+    const usedNums = rooms
+      .filter((r) => r.type === typeValue)
+      .map((r) => r.name.match(new RegExp(`^${typeLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`)))
+      .filter(Boolean)
+      .map((m) => Number(m[1]))
+    const nextNum = usedNums.length > 0 ? Math.max(...usedNums) + 1 : 1
+    return `${typeLabel} ${nextNum}`
+  }, [rooms])
+
+  const handleAddAll = () => {
+    let currentX = 5
+    let currentY = 5
+    let rowMaxHeight = 0
+    let currentNum = {}
+
+    Object.entries(batch).forEach(([typeValue, count]) => {
+      const dims = DEFAULT_DIMENSIONS[typeValue] ?? DEFAULT_DIMENSIONS.other
+
+      for (let i = 0; i < count; i++) {
+        // Wrap to next row if room would exceed canvas width
+        if (currentX + dims.widthFt > gridCols - 5) {
+          currentX = 5
+          currentY += rowMaxHeight + 1
+          rowMaxHeight = 0
+        }
+
+        // Track sequential numbering within this batch
+        currentNum[typeValue] = (currentNum[typeValue] || 0) + 1
+
+        const typeLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === typeValue)?.label ?? 'Room'
+        const usedNums = rooms
+          .filter((r) => r.type === typeValue)
+          .map((r) => r.name.match(new RegExp(`^${typeLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`)))
+          .filter(Boolean)
+          .map((m) => Number(m[1]))
+        const baseNum = usedNums.length > 0 ? Math.max(...usedNums) : 0
+        const roomNum = baseNum + currentNum[typeValue]
+
+        dispatch({
+          type: 'ADD_ROOM',
+          room: {
+            id: crypto.randomUUID(),
+            name: `${typeLabel} ${roomNum}`,
+            type: typeValue,
+            widthFt: dims.widthFt,
+            heightFt: dims.heightFt,
+            x: Math.max(0, Math.min(currentX, gridCols - dims.widthFt)),
+            y: currentY,
+            ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
+          },
+        })
+
+        rowMaxHeight = Math.max(rowMaxHeight, dims.heightFt)
+        currentX += dims.widthFt + 1
+      }
+    })
+
+    setBatch({})
+  }
+
+  const totalCount = Object.values(batch).reduce((sum, count) => sum + count, 0)
+  const hasItems = totalCount > 0
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-[var(--text)]">Name</label>
-        <input
-          type="text"
-          placeholder="e.g. Master Bedroom"
-          value={form.name}
-          onChange={set('name')}
-          className="input"
-        />
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        {ROOM_TYPE_OPTIONS.map((option) => {
+          const colors = TYPE_COLORS[option.value] ?? TYPE_COLORS.other
+          const dims = DEFAULT_DIMENSIONS[option.value] ?? DEFAULT_DIMENSIONS.other
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleTypeClick(option.value)}
+              className="px-2 py-1.5 rounded-md text-xs font-bold text-center cursor-pointer transition-all hover:brightness-90 active:scale-95"
+              style={{ backgroundColor: colors.pillBg, color: '#fff' }}
+              title={`${option.label} (${dims.widthFt}×${dims.heightFt} ft)`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-[var(--text)]">Type</label>
-        <select value={form.type} onChange={set('type')} className="input">
-          {ROOM_TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
+      {hasItems && (
+        <>
+          <div className="border-t border-[var(--border)] pt-3">
+            <div className="text-xs font-medium text-[var(--text)] mb-2">Selected ({totalCount})</div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(batch).map(([typeValue, count]) => {
+                const label = ROOM_TYPE_OPTIONS.find((o) => o.value === typeValue)?.label ?? 'Room'
+                const colors = TYPE_COLORS[typeValue] ?? TYPE_COLORS.other
+                return (
+                  <div
+                    key={typeValue}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs"
+                    style={{ background: colors.fill, color: colors.stroke, border: `1px solid ${colors.stroke}` }}
+                  >
+                    <span className="font-medium">
+                      {label} ({count})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveType(typeValue)}
+                      className="text-current hover:opacity-70 transition-opacity"
+                      title="Remove from batch"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
 
-      <div className="flex gap-2">
-        <div className="flex flex-col gap-1 flex-1">
-          <label className="text-xs font-medium text-[var(--text)]">Width ({unit})</label>
-          <input
-            type="number"
-            min="1"
-            step="0.5"
-            placeholder="12"
-            value={form.width}
-            onChange={set('width')}
-            className="input"
-          />
-        </div>
-        <div className="flex flex-col gap-1 flex-1">
-          <label className="text-xs font-medium text-[var(--text)]">Depth ({unit})</label>
-          <input
-            type="number"
-            min="1"
-            step="0.5"
-            placeholder="10"
-            value={form.height}
-            onChange={set('height')}
-            className="input"
-          />
-        </div>
-      </div>
-
-      {error && <p className="text-xs text-red-500">{error}</p>}
-
-      <button type="submit" className="btn-primary">Add Room</button>
-    </form>
+          <button type="button" onClick={handleAddAll} className="btn-primary">
+            Add All ({totalCount})
+          </button>
+        </>
+      )}
+    </div>
   )
 }
