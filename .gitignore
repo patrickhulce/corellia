@@ -16,3 +16,5 @@ report.txt.csv
 *.pyz
 *.pywz
 *.pyzw
+
+*.checkpoint

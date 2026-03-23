@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite:*)",
+      "Bash(nvm ls:*)",
+      "Bash(fnm ls:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm use:*)",
+      "Bash(node_modules/.bin/vite build:*)",
+      "Bash(npm run:*)",
+      "Bash(bash /Users/phulce/.claude/skills/semantic-commits-skill/scripts/create_checkpoint.sh)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
