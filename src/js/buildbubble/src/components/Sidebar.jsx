@@ -2,6 +2,8 @@ import { useFloorplan } from '../context/FloorplanContext'
 import { AddRoomForm } from './AddRoomForm'
 import { RoomListItem } from './RoomListItem'
 import { ScaleControl } from './ScaleControl'
+import { FileManagement } from './FileManagement'
+import { AccordionPanel } from './AccordionPanel'
 
 const FT_TO_M = 0.3048
 
@@ -27,13 +29,8 @@ export function Sidebar() {
         <p className="text-xs text-[var(--text)] mt-0.5">Drag-and-drop floorplan builder</p>
       </div>
 
-      <div className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)]">Add Room</h2>
+      <AccordionPanel title="Build" defaultOpen>
         <AddRoomForm />
-      </div>
-
-      <div className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)]">Settings</h2>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-[var(--text)]">Default Ceiling Height ({unit})</label>
           <input
@@ -45,12 +42,9 @@ export function Sidebar() {
             className="input"
           />
         </div>
-      </div>
+      </AccordionPanel>
 
-      <div className="p-4 border-b border-[var(--border)] flex flex-col gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)] mb-1">
-          Rooms {rooms.length > 0 && <span className="normal-case font-normal">({rooms.length})</span>}
-        </h2>
+      <AccordionPanel title="Review" badge={rooms.length > 0 ? rooms.length : null}>
         {rooms.length === 0 ? (
           <p className="text-xs text-[var(--text)] italic">No rooms yet. Add one above.</p>
         ) : (
@@ -60,12 +54,12 @@ export function Sidebar() {
             ))}
           </div>
         )}
-      </div>
+      </AccordionPanel>
 
-      <div className="p-4 mt-auto">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)] mb-3">View</h2>
+      <AccordionPanel title="Settings">
+        <FileManagement />
         <ScaleControl />
-      </div>
+      </AccordionPanel>
     </aside>
   )
 }
