@@ -1,9 +1,12 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react'
 import { useFloorplan } from '../context/FloorplanContext'
 import { useDrag } from '../hooks/useDrag'
 import { useResize } from '../hooks/useResize'
 import { RoomRect } from './RoomRect'
-import { ROOM_TYPE_OPTIONS } from '../constants/roomTypes'
+import { RoomTypeModal } from './RoomTypeModal'
+import { ROOM_TYPE_OPTIONS, TYPE_COLORS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
+
+const FT_TO_M = 0.3048
 
 export function FloorplanCanvas() {
   const { state, dispatch } = useFloorplan()
@@ -11,9 +14,22 @@ export function FloorplanCanvas() {
 
   const containerRef = useRef(null)
   const svgRef = useRef(null)
-  const svgDownPos = useRef(null)
-  const panState = useRef({ active: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 })
+  const wrapperRef = useRef(null)
+  const panState = useRef({ active: false, startX: 0, startY: 0, viewX: 0, viewY: 0 })
+  const viewRef = useRef({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
+
+  // Drag-to-create state
+  const drawStart = useRef(null)
+  const drawRectRef = useRef(null)
+  const [drawRect, setDrawRect] = useState(null)
+
+  // Type cycling during drag
+  const drawTypeIdx = useRef(ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other'))
+  const [drawType, setDrawType] = useState('other')
+
+  // Double-click modal
+  const [modalPos, setModalPos] = useState(null)
 
   const { handlePointerDown } = useDrag(svgRef, dispatch)
   const { handleResizeStart } = useResize(svgRef, dispatch)
@@ -21,9 +37,32 @@ export function FloorplanCanvas() {
   const svgW = gridCols * ppu
   const svgH = gridRows * ppu
 
-  // Scroll-wheel zoom, centered on cursor
+  // Apply the current view transform to the wrapper div
+  const applyView = useCallback(() => {
+    const wrapper = wrapperRef.current
+    if (wrapper) {
+      wrapper.style.transform = `translate(${-viewRef.current.x}px, ${-viewRef.current.y}px)`
+    }
+  }, [])
+
+  // Re-apply transform after React re-renders (e.g. after zoom changes ppu)
+  useLayoutEffect(() => {
+    applyView()
+  })
+
+  // Scroll-wheel zoom (or type cycling during drag), centered on cursor
   const handleWheel = useCallback((e) => {
     e.preventDefault()
+
+    // If actively drawing, cycle room type instead of zooming
+    if (drawStart.current) {
+      const dir = e.deltaY < 0 ? -1 : 1
+      const len = ROOM_TYPE_OPTIONS.length
+      drawTypeIdx.current = (drawTypeIdx.current + dir + len) % len
+      setDrawType(ROOM_TYPE_OPTIONS[drawTypeIdx.current].value)
+      return
+    }
+
     const container = containerRef.current
     if (!container) return
 
@@ -35,15 +74,11 @@ export function FloorplanCanvas() {
     const cursorX = e.clientX - rect.left
     const cursorY = e.clientY - rect.top
 
-    const newScrollLeft = (container.scrollLeft + cursorX) * ratio - cursorX
-    const newScrollTop = (container.scrollTop + cursorY) * ratio - cursorY
+    // Adjust view so the world point under the cursor stays fixed
+    viewRef.current.x = (viewRef.current.x + cursorX) * ratio - cursorX
+    viewRef.current.y = (viewRef.current.y + cursorY) * ratio - cursorY
 
     dispatch({ type: 'SET_PIXELS_PER_UNIT', value: newPpu })
-
-    requestAnimationFrame(() => {
-      container.scrollLeft = newScrollLeft
-      container.scrollTop = newScrollTop
-    })
   }, [ppu, dispatch])
 
   useEffect(() => {
@@ -53,27 +88,28 @@ export function FloorplanCanvas() {
     return () => el.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
 
-  // Scroll to center of grid on first mount
+  // Center the view on the grid on first mount
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2
-    container.scrollTop = (container.scrollHeight - container.clientHeight) / 2
+    viewRef.current.x = (svgW - container.clientWidth) / 2
+    viewRef.current.y = (svgH - container.clientHeight) / 2
+    applyView()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Middle-click pan
   const handleContainerPointerDown = useCallback((e) => {
     if (e.button !== 1) return
     e.preventDefault()
-    const container = containerRef.current
     panState.current = {
       active: true,
       startX: e.clientX,
       startY: e.clientY,
-      scrollLeft: container.scrollLeft,
-      scrollTop: container.scrollTop,
+      viewX: viewRef.current.x,
+      viewY: viewRef.current.y,
     }
-    container.setPointerCapture(e.pointerId)
+    containerRef.current.setPointerCapture(e.pointerId)
   }, [])
 
   const handleContainerPointerMove = useCallback((e) => {
@@ -81,10 +117,10 @@ export function FloorplanCanvas() {
     const dx = e.clientX - panState.current.startX
     const dy = e.clientY - panState.current.startY
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) setIsPanning(true)
-    const container = containerRef.current
-    container.scrollLeft = panState.current.scrollLeft - dx
-    container.scrollTop = panState.current.scrollTop - dy
-  }, [])
+    viewRef.current.x = panState.current.viewX - dx
+    viewRef.current.y = panState.current.viewY - dy
+    applyView()
+  }, [applyView])
 
   const handleContainerPointerUp = useCallback((e) => {
     if (e.button !== 1) return
@@ -92,24 +128,9 @@ export function FloorplanCanvas() {
     setIsPanning(false)
   }, [])
 
-  // SVG background: record pointerDown position + deselect
+  // SVG background: start drag-to-create
   const handleSvgPointerDown = useCallback((e) => {
-    if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
-    svgDownPos.current = { x: e.clientX, y: e.clientY }
-    dispatch({ type: 'DESELECT' })
-  }, [dispatch])
-
-  // SVG background: click-to-create on pointerUp
-  const handleSvgPointerUp = useCallback((e) => {
     if (e.button !== 0) return
-    if (panState.current.active) return
-    if (!svgDownPos.current) return
-
-    const dist = Math.hypot(e.clientX - svgDownPos.current.x, e.clientY - svgDownPos.current.y)
-    svgDownPos.current = null
-    if (dist >= 3) return
-
-    // Check this is a background click, not a room
     if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
 
     const svg = svgRef.current
@@ -118,84 +139,248 @@ export function FloorplanCanvas() {
     pt.y = e.clientY
     const pos = pt.matrixTransform(svg.getScreenCTM().inverse())
 
-    const gridX = Math.min(Math.floor(pos.x / ppu), gridCols - 10)
-    const gridY = Math.min(Math.floor(pos.y / ppu), gridRows - 10)
+    // Reset type cycling
+    drawTypeIdx.current = ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other')
+    setDrawType('other')
 
+    drawStart.current = {
+      gridX: Math.floor(pos.x / ppu),
+      gridY: Math.floor(pos.y / ppu),
+    }
+    drawRectRef.current = null
+    setDrawRect(null)
+
+    svg.setPointerCapture(e.pointerId)
+    dispatch({ type: 'DESELECT' })
+  }, [ppu, dispatch])
+
+  // SVG: update drag-to-create preview
+  const handleSvgPointerMove = useCallback((e) => {
+    if (!drawStart.current) return
+
+    const svg = svgRef.current
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const pos = pt.matrixTransform(svg.getScreenCTM().inverse())
+
+    const curGridX = Math.floor(pos.x / ppu)
+    const curGridY = Math.floor(pos.y / ppu)
+
+    const x = Math.min(drawStart.current.gridX, curGridX)
+    const y = Math.min(drawStart.current.gridY, curGridY)
+    const w = Math.abs(curGridX - drawStart.current.gridX)
+    const h = Math.abs(curGridY - drawStart.current.gridY)
+
+    const rect = { x, y, w, h }
+    drawRectRef.current = rect
+    setDrawRect(rect)
+  }, [ppu])
+
+  // Helper to generate auto-name from type
+  const generateRoomName = useCallback((typeValue) => {
+    const typeLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === typeValue)?.label ?? 'Room'
     const usedNums = rooms
-      .map((r) => r.name.match(/^Room (\d+)$/))
+      .filter((r) => r.type === typeValue)
+      .map((r) => r.name.match(new RegExp(`^${typeLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`)))
       .filter(Boolean)
       .map((m) => Number(m[1]))
     const nextNum = usedNums.length > 0 ? Math.max(...usedNums) + 1 : 1
+    return `${typeLabel} ${nextNum}`
+  }, [rooms])
+
+  // SVG: finish drag-to-create, require 2x2 minimum
+  const handleSvgPointerUp = useCallback((e) => {
+    if (e.button !== 0) return
+    if (!drawStart.current) return
+
+    const rect = drawRectRef.current
+    const selectedType = ROOM_TYPE_OPTIONS[drawTypeIdx.current].value
+    drawStart.current = null
+    drawRectRef.current = null
+    setDrawRect(null)
+
+    if (!rect || rect.w < 2 || rect.h < 2) return
 
     dispatch({
       type: 'ADD_ROOM',
       room: {
         id: crypto.randomUUID(),
-        name: `Room ${nextNum}`,
-        type: 'other',
-        widthFt: 10,
-        heightFt: 10,
-        x: Math.max(0, gridX),
-        y: Math.max(0, gridY),
+        name: generateRoomName(selectedType),
+        type: selectedType,
+        widthFt: rect.w,
+        heightFt: rect.h,
+        x: Math.max(0, Math.min(rect.x, gridCols - rect.w)),
+        y: Math.max(0, Math.min(rect.y, gridRows - rect.h)),
+        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
       },
     })
-  }, [ppu, gridCols, gridRows, rooms, dispatch])
+  }, [gridCols, gridRows, dispatch, generateRoomName, state.defaultCeilingHeightFt])
+
+  // Double-click on SVG: open room type modal
+  const handleSvgDoubleClick = useCallback((e) => {
+    if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
+
+    const svg = svgRef.current
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const pos = pt.matrixTransform(svg.getScreenCTM().inverse())
+
+    setModalPos({
+      gridX: Math.floor(pos.x / ppu),
+      gridY: Math.floor(pos.y / ppu),
+    })
+  }, [ppu])
+
+  // Modal: create room with default dimensions
+  const handleModalSelect = useCallback((typeValue) => {
+    if (!modalPos) return
+    const dims = DEFAULT_DIMENSIONS[typeValue] ?? DEFAULT_DIMENSIONS.other
+
+    dispatch({
+      type: 'ADD_ROOM',
+      room: {
+        id: crypto.randomUUID(),
+        name: generateRoomName(typeValue),
+        type: typeValue,
+        widthFt: dims.widthFt,
+        heightFt: dims.heightFt,
+        x: Math.max(0, Math.min(modalPos.gridX, gridCols - dims.widthFt)),
+        y: Math.max(0, Math.min(modalPos.gridY, gridRows - dims.heightFt)),
+        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
+      },
+    })
+    setModalPos(null)
+  }, [modalPos, gridCols, gridRows, dispatch, generateRoomName, state.defaultCeilingHeightFt])
+
+  // Draw preview colors
+  const previewColors = TYPE_COLORS[drawType] ?? TYPE_COLORS.other
+  const previewLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === drawType)?.label ?? 'Room'
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto"
-      style={{ background: 'var(--bg)' }}
+      className="flex-1"
+      style={{ background: 'var(--bg)', overflow: 'hidden', position: 'relative', cursor: isPanning ? 'grabbing' : 'default' }}
       onPointerDown={handleContainerPointerDown}
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
     >
-      <svg
-        ref={svgRef}
-        width={svgW}
-        height={svgH}
-        data-ppu={ppu}
-        data-cols={gridCols}
-        data-rows={gridRows}
-        style={{ display: 'block', cursor: isPanning ? 'grabbing' : 'crosshair' }}
-        onPointerDown={handleSvgPointerDown}
-        onPointerUp={handleSvgPointerUp}
-      >
-        <defs>
-          <pattern id="grid-minor" width={ppu} height={ppu} patternUnits="userSpaceOnUse">
-            <path
-              d={`M ${ppu} 0 L 0 0 0 ${ppu}`}
-              fill="none"
-              stroke="var(--border)"
-              strokeWidth="0.5"
-            />
-          </pattern>
-          <pattern id="grid-major" width={ppu * 5} height={ppu * 5} patternUnits="userSpaceOnUse">
-            <rect width={ppu * 5} height={ppu * 5} fill="url(#grid-minor)" />
-            <path
-              d={`M ${ppu * 5} 0 L 0 0 0 ${ppu * 5}`}
-              fill="none"
-              stroke="var(--border)"
-              strokeWidth="1"
-            />
-          </pattern>
-        </defs>
+      <div ref={wrapperRef} style={{ position: 'absolute', willChange: 'transform' }}>
+        <svg
+          ref={svgRef}
+          width={svgW}
+          height={svgH}
+          data-ppu={ppu}
+          data-cols={gridCols}
+          data-rows={gridRows}
+          style={{ display: 'block', cursor: isPanning ? 'grabbing' : 'crosshair' }}
+          onPointerDown={handleSvgPointerDown}
+          onPointerMove={handleSvgPointerMove}
+          onPointerUp={handleSvgPointerUp}
+          onDoubleClick={handleSvgDoubleClick}
+        >
+          <defs>
+            <pattern id="grid-minor" width={ppu} height={ppu} patternUnits="userSpaceOnUse">
+              <path
+                d={`M ${ppu} 0 L 0 0 0 ${ppu}`}
+                fill="none"
+                stroke="var(--border)"
+                strokeWidth="0.5"
+              />
+            </pattern>
+            <pattern id="grid-major" width={ppu * 5} height={ppu * 5} patternUnits="userSpaceOnUse">
+              <rect width={ppu * 5} height={ppu * 5} fill="url(#grid-minor)" />
+              <path
+                d={`M ${ppu * 5} 0 L 0 0 0 ${ppu * 5}`}
+                fill="none"
+                stroke="var(--border)"
+                strokeWidth="1"
+              />
+            </pattern>
+          </defs>
 
-        <rect width={svgW} height={svgH} fill="var(--bg)" />
-        <rect width={svgW} height={svgH} fill="url(#grid-major)" />
+          <rect width={svgW} height={svgH} fill="var(--bg)" />
+          <rect width={svgW} height={svgH} fill="url(#grid-major)" />
 
-        {rooms.map((room) => (
-          <RoomRect
-            key={room.id}
-            room={room}
-            isSelected={room.id === selectedId}
-            pixelsPerUnit={ppu}
-            unit={unit}
-            onPointerDown={handlePointerDown}
-            onResizeStart={room.id === selectedId ? handleResizeStart : null}
-          />
-        ))}
-      </svg>
+          {rooms.map((room) => (
+            <RoomRect
+              key={room.id}
+              room={room}
+              isSelected={room.id === selectedId}
+              pixelsPerUnit={ppu}
+              unit={unit}
+              onPointerDown={handlePointerDown}
+              onResizeStart={room.id === selectedId ? handleResizeStart : null}
+            />
+          ))}
+
+          {drawRect && drawRect.w > 0 && drawRect.h > 0 && (() => {
+            const valid = drawRect.w >= 2 && drawRect.h >= 2
+            const colors = valid ? previewColors : { fill: 'rgba(239,68,68,0.10)', stroke: 'rgb(239,68,68)' }
+            const px = drawRect.x * ppu
+            const py = drawRect.y * ppu
+            const pw = drawRect.w * ppu
+            const ph = drawRect.h * ppu
+            const cx = px + pw / 2
+            const cy = py + ph / 2
+            const displayW = unit === 'm' ? (drawRect.w * FT_TO_M).toFixed(1) : drawRect.w
+            const displayH = unit === 'm' ? (drawRect.h * FT_TO_M).toFixed(1) : drawRect.h
+            return (
+              <g pointerEvents="none">
+                <rect
+                  x={px}
+                  y={py}
+                  width={pw}
+                  height={ph}
+                  fill={valid ? colors.fill : colors.fill}
+                  stroke={colors.stroke}
+                  strokeWidth="2"
+                  strokeDasharray="6 3"
+                  rx={2}
+                  opacity={valid ? 0.85 : 1}
+                />
+                {pw > 30 && ph > 20 && (
+                  <>
+                    <text
+                      x={cx}
+                      y={cy - (ph > 40 ? 8 : 0)}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={Math.min(13, (pw / previewLabel.length) * 1.4)}
+                      fontWeight="600"
+                      fill={valid ? previewColors.stroke : 'rgb(239,68,68)'}
+                    >
+                      {valid ? previewLabel : 'Too small'}
+                    </text>
+                    {ph > 40 && (
+                      <text
+                        x={cx}
+                        y={cy + 10}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={10}
+                        fill={valid ? previewColors.stroke : 'rgb(239,68,68)'}
+                        opacity={0.8}
+                      >
+                        {displayW} × {displayH} {unit}
+                      </text>
+                    )}
+                  </>
+                )}
+              </g>
+            )
+          })()}
+        </svg>
+      </div>
+
+      {modalPos && (
+        <RoomTypeModal
+          onSelect={handleModalSelect}
+          onClose={() => setModalPos(null)}
+        />
+      )}
     </div>
   )
 }
