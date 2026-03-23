@@ -34,7 +34,7 @@ function cornerPos(dir, x, y, w, h) {
   }
 }
 
-export function RoomRect({ room, isSelected, pixelsPerUnit, unit, onPointerDown, onResizeStart }) {
+export function RoomRect({ room, isSelected, pixelsPerUnit, unit, onPointerDown, onResizeStart, onDoubleClick }) {
   const ppu = pixelsPerUnit
   const x = room.x * ppu
   const y = room.y * ppu
@@ -57,6 +57,7 @@ export function RoomRect({ room, isSelected, pixelsPerUnit, unit, onPointerDown,
       className="select-none"
       style={{ cursor: 'grab' }}
       onPointerDown={(e) => onPointerDown(e, room)}
+      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(room) }}
     >
       <rect
         x={x}
@@ -68,45 +69,77 @@ export function RoomRect({ room, isSelected, pixelsPerUnit, unit, onPointerDown,
         strokeWidth={isSelected ? 2.5 : 1.5}
         rx={2}
       />
-      {w > 30 && h > 20 && (
-        <>
-          <text
-            x={cx}
-            y={cy - (h > 40 ? 8 : 0)}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize={Math.min(13, (w / room.name.length) * 1.4)}
-            fontWeight="600"
-            fill={colors.stroke}
-            style={{ pointerEvents: 'none' }}
-          >
-            {room.name}
-          </text>
-          {h > 40 && (
+      {w > 30 && h > 20 && (() => {
+        const nameFontSize = Math.min(11, (w / room.name.length) * 1.4)
+        const dimsFontSize = 9
+        const nameY = cy - (h > 40 ? 8 : 0)
+        const padX = 4
+        const padY = 2
+        const nameW = room.name.length * nameFontSize * 0.6 + padX * 2
+        const nameH = nameFontSize + padY * 2
+        return (
+          <>
+            <rect
+              x={cx - nameW / 2}
+              y={nameY - nameH / 2}
+              width={nameW}
+              height={nameH}
+              rx={3}
+              fill={colors.stroke}
+              opacity={0.85}
+              style={{ pointerEvents: 'none' }}
+            />
             <text
               x={cx}
-              y={cy + 10}
+              y={nameY}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={10}
-              fill={colors.stroke}
-              opacity={0.8}
+              fontSize={nameFontSize}
+              fontWeight="600"
+              fill="white"
               style={{ pointerEvents: 'none' }}
             >
-              {dimsLabel}
+              {room.name}
             </text>
-          )}
-        </>
-      )}
+            {h > 40 && (() => {
+              const dimsW = dimsLabel.length * dimsFontSize * 0.6 + padX * 2
+              const dimsH = dimsFontSize + padY * 2
+              return (
+                <>
+                  <rect
+                    x={cx - dimsW / 2}
+                    y={cy + 10 - dimsH / 2}
+                    width={dimsW}
+                    height={dimsH}
+                    rx={3}
+                    fill={colors.stroke}
+                    opacity={0.85}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={cx}
+                    y={cy + 10}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={dimsFontSize}
+                    fill="white"
+                    opacity={0.95}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {dimsLabel}
+                  </text>
+                </>
+              )
+            })()}
+          </>
+        )
+      })()}
 
       {showHandles && (
         <>
           {/* Edge handles — rendered first so corners sit on top */}
           {EDGE_HANDLES.map(({ dir, cursor }) => {
             const r = edgeRect(dir, x, y, w, h)
-            // Skip edge if room is too narrow in that axis
-            if ((dir === 'n' || dir === 's') && w < 24) return null
-            if ((dir === 'w' || dir === 'e') && h < 24) return null
             return (
               <rect
                 key={dir}

@@ -14,6 +14,8 @@ function TrashIcon() {
   )
 }
 
+const OUTDOOR_TYPES = ['grass', 'driveway', 'patio', 'pool', 'pergola']
+
 export function RoomListItem({ room }) {
   const { state, dispatch } = useFloorplan()
   const isSelected = state.selectedId === room.id
@@ -25,6 +27,7 @@ export function RoomListItem({ room }) {
   const displayW = unit === 'm' ? (room.widthFt * FT_TO_M).toFixed(1) : room.widthFt
   const displayH = unit === 'm' ? (room.heightFt * FT_TO_M).toFixed(1) : room.heightFt
 
+  const isOutdoor = OUTDOOR_TYPES.includes(room.type)
   const ceilingFt = room.ceilingHeightFt ?? 9
   const displayCeiling = unit === 'm' ? (ceilingFt * FT_TO_M).toFixed(1) : ceilingFt
 
@@ -52,7 +55,7 @@ export function RoomListItem({ room }) {
           <div className="text-xs text-[var(--text)] truncate">{label} · {displayW}×{displayH} {unit}</div>
         </div>
         <button
-          className="text-[var(--text)] hover:text-red-500 transition-colors p-1 rounded"
+          className="text-[var(--text)] hover:text-red-500 transition-colors p-1 rounded cursor-pointer"
           onClick={(e) => {
             e.stopPropagation()
             dispatch({ type: 'DELETE_ROOM', id: room.id })
@@ -62,7 +65,7 @@ export function RoomListItem({ room }) {
           <TrashIcon />
         </button>
       </div>
-      {isSelected && (
+      {isSelected && !isOutdoor && (
         <div className="flex items-center gap-2 mt-2 ml-5">
           <label className="text-xs text-[var(--text)] whitespace-nowrap">Ceiling ({unit})</label>
           <input
