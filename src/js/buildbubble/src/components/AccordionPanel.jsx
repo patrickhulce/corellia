@@ -29,7 +29,7 @@ export function AccordionPanel({ title, defaultOpen = false, badge, children }) 
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && <div className="px-4 pb-3 flex flex-col gap-3">{children}</div>}
+      {open && <div className="px-4 pt-1 pb-4 flex flex-col gap-3">{children}</div>}
     </div>
   )
 }
