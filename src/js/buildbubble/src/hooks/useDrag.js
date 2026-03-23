@@ -47,6 +47,7 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange, selected
       let appliedDy = 0
 
       e.currentTarget.setPointerCapture(e.pointerId)
+      dispatch({ type: 'DRAG_START' })
 
       const onMove = (moveE) => {
         const cur = toSVG(moveE.clientX, moveE.clientY)
@@ -83,19 +84,23 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange, selected
           newBboxX = Math.max(0, Math.min(newBboxX, gridCols - bboxW))
           newBboxY = Math.max(0, Math.min(newBboxY, gridRows - bboxH))
 
-          // Snap using group bbox
-          const otherRooms = allRooms.filter((r) => !dragIds.includes(r.id))
-          const snapThreshold = SNAP_THRESHOLD_PX / ppu
-          const candidate = { x: newBboxX, y: newBboxY, widthFt: bboxW, heightFt: bboxH }
-          const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
+          // Snap using group bbox (Cmd bypasses snap)
+          if (!moveE.metaKey) {
+            const otherRooms = allRooms.filter((r) => !dragIds.includes(r.id))
+            const snapThreshold = SNAP_THRESHOLD_PX / ppu
+            const candidate = { x: newBboxX, y: newBboxY, widthFt: bboxW, heightFt: bboxH }
+            const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
 
-          newBboxX = Math.max(0, Math.min(newBboxX + snap.dx, gridCols - bboxW))
-          newBboxY = Math.max(0, Math.min(newBboxY + snap.dy, gridRows - bboxH))
+            newBboxX = Math.max(0, Math.min(newBboxX + snap.dx, gridCols - bboxW))
+            newBboxY = Math.max(0, Math.min(newBboxY + snap.dy, gridRows - bboxH))
+            onSnapGuidesChange?.(snap.guides)
+          } else {
+            onSnapGuidesChange?.({ x: [], y: [] })
+          }
 
           const moveDx = newBboxX - bboxX
           const moveDy = newBboxY - bboxY
 
-          onSnapGuidesChange?.(snap.guides)
           if (moveDx !== 0 || moveDy !== 0) {
             dispatch({ type: 'MOVE_ROOMS', ids: dragIds, dx: moveDx, dy: moveDy })
             appliedDx += moveDx
@@ -106,15 +111,20 @@ export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange, selected
           let newX = Math.max(0, Math.min(startX + dx, gridCols - room.widthFt))
           let newY = Math.max(0, Math.min(startY + dy, gridRows - room.heightFt))
 
-          const otherRooms = allRooms.filter((r) => r.id !== room.id)
-          const snapThreshold = SNAP_THRESHOLD_PX / ppu
-          const candidate = { x: newX, y: newY, widthFt: room.widthFt, heightFt: room.heightFt }
-          const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
+          // Snap (Cmd bypasses snap)
+          if (!moveE.metaKey) {
+            const otherRooms = allRooms.filter((r) => r.id !== room.id)
+            const snapThreshold = SNAP_THRESHOLD_PX / ppu
+            const candidate = { x: newX, y: newY, widthFt: room.widthFt, heightFt: room.heightFt }
+            const snap = computeSnap(candidate, otherRooms, prevDirection, snapThreshold)
 
-          newX = Math.max(0, Math.min(newX + snap.dx, gridCols - room.widthFt))
-          newY = Math.max(0, Math.min(newY + snap.dy, gridRows - room.heightFt))
+            newX = Math.max(0, Math.min(newX + snap.dx, gridCols - room.widthFt))
+            newY = Math.max(0, Math.min(newY + snap.dy, gridRows - room.heightFt))
+            onSnapGuidesChange?.(snap.guides)
+          } else {
+            onSnapGuidesChange?.({ x: [], y: [] })
+          }
 
-          onSnapGuidesChange?.(snap.guides)
           dispatch({ type: 'MOVE_ROOM', id: room.id, x: newX, y: newY })
         }
       }

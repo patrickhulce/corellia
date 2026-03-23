@@ -138,7 +138,24 @@ export function floorplanReducer(state, action) {
     case 'CLEAR_STATE':
       return { ...initialState }
 
+    // Sentinel actions dispatched before drags/resizes begin (handled by undo wrapper)
+    case 'DRAG_START':
+    case 'RESIZE_START':
+      return state
+
+    // UNDO is handled by the undo wrapper, not here
+    case 'UNDO':
+      return state
+
     default:
       return state
   }
 }
+
+// Actions that should snapshot state for undo
+export const SNAPSHOT_ACTIONS = new Set([
+  'ADD_ROOM', 'DELETE_ROOM', 'UPDATE_ROOM', 'ROTATE_ROOM',
+  'BRING_TO_FRONT', 'SEND_TO_BACK', 'BRING_FORWARD', 'SEND_BACKWARD',
+  'CLEAR_STATE', 'SET_DEFAULT_CEILING_HEIGHT', 'SET_UNIT',
+  'DRAG_START', 'RESIZE_START',
+])

@@ -31,17 +31,6 @@ export function Sidebar() {
 
       <AccordionPanel title="Build" defaultOpen>
         <AddRoomForm />
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[var(--text)]">Default Ceiling Height ({unit})</label>
-          <input
-            type="number"
-            min="1"
-            step="0.5"
-            value={displayCeiling}
-            onChange={handleCeilingChange}
-            className="input"
-          />
-        </div>
       </AccordionPanel>
 
       <AccordionPanel title="Review" badge={rooms.length > 0 ? rooms.length : null}>
@@ -59,6 +48,17 @@ export function Sidebar() {
       <AccordionPanel title="Settings">
         <FileManagement />
         <ScaleControl />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[var(--text)]">Default Ceiling Height ({unit})</label>
+          <input
+            type="number"
+            min="1"
+            step="0.5"
+            value={displayCeiling}
+            onChange={handleCeilingChange}
+            className="input"
+          />
+        </div>
       </AccordionPanel>
     </aside>
   )

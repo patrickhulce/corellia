@@ -6,9 +6,7 @@ import { RoomRect } from './RoomRect'
 import { RoomTypeModal } from './RoomTypeModal'
 import { RoomEditModal } from './RoomEditModal'
 import { Toolbar } from './Toolbar'
-import { ROOM_TYPE_OPTIONS, TYPE_COLORS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
-
-const FT_TO_M = 0.3048
+import { ROOM_TYPE_OPTIONS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
 
 export function FloorplanCanvas() {
   const { state, dispatch } = useFloorplan()
@@ -21,18 +19,9 @@ export function FloorplanCanvas() {
   const viewRef = useRef({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
 
-  // Drag-to-create state
-  const drawStart = useRef(null)
-  const drawRectRef = useRef(null)
-  const [drawRect, setDrawRect] = useState(null)
-
   // Marquee selection state
   const marqueeStart = useRef(null)
   const [marqueeRect, setMarqueeRect] = useState(null)
-
-  // Type cycling during drag
-  const drawTypeIdx = useRef(ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other'))
-  const [drawType, setDrawType] = useState('other')
 
   // Double-click modal
   const [modalPos, setModalPos] = useState(null)
@@ -67,18 +56,9 @@ export function FloorplanCanvas() {
     applyView()
   })
 
-  // Scroll-wheel zoom (or type cycling during drag), centered on cursor
+  // Scroll-wheel zoom centered on cursor
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-
-    // If actively drawing, cycle room type instead of zooming
-    if (drawStart.current) {
-      const dir = e.deltaY < 0 ? -1 : 1
-      const len = ROOM_TYPE_OPTIONS.length
-      drawTypeIdx.current = (drawTypeIdx.current + dir + len) % len
-      setDrawType(ROOM_TYPE_OPTIONS[drawTypeIdx.current].value)
-      return
-    }
 
     const container = containerRef.current
     if (!container) return
@@ -108,11 +88,17 @@ export function FloorplanCanvas() {
   // Keyboard delete handler
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault()
         for (const id of selectedIds) {
           dispatch({ type: 'DELETE_ROOM', id })
         }
+      }
+      if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        e.preventDefault()
+        dispatch({ type: 'UNDO' })
       }
     }
 
@@ -160,7 +146,7 @@ export function FloorplanCanvas() {
     setIsPanning(false)
   }, [])
 
-  // SVG background: start drag-to-create or marquee select
+  // SVG background: start marquee select (deselect on click handled in pointerUp)
   const handleSvgPointerDown = useCallback((e) => {
     if (e.button !== 0) return
     if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
@@ -174,28 +160,15 @@ export function FloorplanCanvas() {
     const gridX = Math.floor(pos.x / ppu)
     const gridY = Math.floor(pos.y / ppu)
 
-    if (e.shiftKey) {
-      // Start marquee selection
-      marqueeStart.current = { gridX, gridY }
-      setMarqueeRect(null)
-      svg.setPointerCapture(e.pointerId)
-      return
-    }
-
-    // Reset type cycling
-    drawTypeIdx.current = ROOM_TYPE_OPTIONS.findIndex((o) => o.value === 'other')
-    setDrawType('other')
-
-    drawStart.current = { gridX, gridY }
-    drawRectRef.current = null
-    setDrawRect(null)
-
+    marqueeStart.current = { gridX, gridY }
+    setMarqueeRect(null)
     svg.setPointerCapture(e.pointerId)
-    dispatch({ type: 'DESELECT' })
-  }, [ppu, dispatch])
+  }, [ppu])
 
-  // SVG: update drag-to-create preview or marquee
+  // SVG: update marquee selection
   const handleSvgPointerMove = useCallback((e) => {
+    if (!marqueeStart.current) return
+
     const svg = svgRef.current
     const pt = svg.createSVGPoint()
     pt.x = e.clientX
@@ -204,25 +177,11 @@ export function FloorplanCanvas() {
     const curGridX = Math.floor(pos.x / ppu)
     const curGridY = Math.floor(pos.y / ppu)
 
-    if (marqueeStart.current) {
-      const x = Math.min(marqueeStart.current.gridX, curGridX)
-      const y = Math.min(marqueeStart.current.gridY, curGridY)
-      const w = Math.abs(curGridX - marqueeStart.current.gridX)
-      const h = Math.abs(curGridY - marqueeStart.current.gridY)
-      setMarqueeRect({ x, y, w, h })
-      return
-    }
-
-    if (!drawStart.current) return
-
-    const x = Math.min(drawStart.current.gridX, curGridX)
-    const y = Math.min(drawStart.current.gridY, curGridY)
-    const w = Math.abs(curGridX - drawStart.current.gridX)
-    const h = Math.abs(curGridY - drawStart.current.gridY)
-
-    const rect = { x, y, w, h }
-    drawRectRef.current = rect
-    setDrawRect(rect)
+    const x = Math.min(marqueeStart.current.gridX, curGridX)
+    const y = Math.min(marqueeStart.current.gridY, curGridY)
+    const w = Math.abs(curGridX - marqueeStart.current.gridX)
+    const h = Math.abs(curGridY - marqueeStart.current.gridY)
+    setMarqueeRect({ x, y, w, h })
   }, [ppu])
 
   // Helper to generate auto-name from type
@@ -237,56 +196,31 @@ export function FloorplanCanvas() {
     return `${typeLabel} ${nextNum}`
   }, [rooms])
 
-  // SVG: finish drag-to-create or marquee, require 2x2 minimum for rooms
+  // SVG: finish marquee selection
   const handleSvgPointerUp = useCallback((e) => {
     if (e.button !== 0) return
+    if (!marqueeStart.current) return
 
-    // Finish marquee selection
-    if (marqueeStart.current) {
-      const mq = marqueeRect
-      marqueeStart.current = null
-      setMarqueeRect(null)
-      if (!mq || (mq.w === 0 && mq.h === 0)) {
-        dispatch({ type: 'DESELECT' })
-        return
-      }
-      const mqRight = mq.x + mq.w
-      const mqBottom = mq.y + mq.h
-      const hitIds = rooms
-        .filter((r) => {
-          const rRight = r.x + r.widthFt
-          const rBottom = r.y + r.heightFt
-          return !(rRight < mq.x || r.x > mqRight || rBottom < mq.y || r.y > mqBottom)
-        })
-        .map((r) => r.id)
-      const merged = [...new Set([...selectedIds, ...hitIds])]
-      dispatch({ type: merged.length > 0 ? 'SELECT_ROOMS' : 'DESELECT', ids: merged })
+    const mq = marqueeRect
+    marqueeStart.current = null
+    setMarqueeRect(null)
+    if (!mq || (mq.w === 0 && mq.h === 0)) {
+      dispatch({ type: 'DESELECT' })
       return
     }
-
-    if (!drawStart.current) return
-
-    const rect = drawRectRef.current
-    const selectedType = ROOM_TYPE_OPTIONS[drawTypeIdx.current].value
-    drawStart.current = null
-    drawRectRef.current = null
-    setDrawRect(null)
-
-    if (!rect || rect.w < 2 || rect.h < 2) return
-
-    dispatch({
-      type: 'ADD_ROOM',
-      room: {
-        id: crypto.randomUUID(),
-        name: generateRoomName(selectedType),
-        type: selectedType,
-        widthFt: rect.w,
-        heightFt: rect.h,
-        x: Math.max(0, Math.min(rect.x, gridCols - rect.w)),
-        y: Math.max(0, Math.min(rect.y, gridRows - rect.h)),
-      },
-    })
-  }, [gridCols, gridRows, dispatch, generateRoomName, rooms, marqueeRect, selectedIds])
+    const mqRight = mq.x + mq.w
+    const mqBottom = mq.y + mq.h
+    const hitIds = rooms
+      .filter((r) => {
+        const rRight = r.x + r.widthFt
+        const rBottom = r.y + r.heightFt
+        return !(rRight < mq.x || r.x > mqRight || rBottom < mq.y || r.y > mqBottom)
+      })
+      .map((r) => r.id)
+    // Shift+drag adds to existing selection; plain drag replaces it
+    const ids = e.shiftKey ? [...new Set([...selectedIds, ...hitIds])] : hitIds
+    dispatch({ type: ids.length > 0 ? 'SELECT_ROOMS' : 'DESELECT', ids })
+  }, [dispatch, rooms, marqueeRect, selectedIds])
 
   // Double-click on SVG: open room type modal
   const handleSvgDoubleClick = useCallback((e) => {
@@ -332,10 +266,6 @@ export function FloorplanCanvas() {
   const handleEditSave = useCallback((id, updates) => {
     dispatch({ type: 'UPDATE_ROOM', id, updates })
   }, [dispatch])
-
-  // Draw preview colors
-  const previewColors = TYPE_COLORS[drawType] ?? TYPE_COLORS.other
-  const previewLabel = ROOM_TYPE_OPTIONS.find((o) => o.value === drawType)?.label ?? 'Room'
 
   return (
     <div
@@ -446,67 +376,6 @@ export function FloorplanCanvas() {
             />
           )}
 
-          {drawRect && drawRect.w > 0 && drawRect.h > 0 && (() => {
-            const valid = drawRect.w >= 2 && drawRect.h >= 2
-            const strokeColor = valid ? previewColors.stroke : 'rgb(239,68,68)'
-            const px = drawRect.x * ppu
-            const py = drawRect.y * ppu
-            const pw = drawRect.w * ppu
-            const ph = drawRect.h * ppu
-            const cx = px + pw / 2
-            const cy = py + ph / 2
-            const displayW = unit === 'm' ? (drawRect.w * FT_TO_M).toFixed(1) : drawRect.w
-            const displayH = unit === 'm' ? (drawRect.h * FT_TO_M).toFixed(1) : drawRect.h
-            return (
-              <g pointerEvents="none">
-                <rect
-                  x={px}
-                  y={py}
-                  width={pw}
-                  height={ph}
-                  fill="none"
-                  stroke={strokeColor}
-                  strokeWidth="2"
-                  strokeDasharray="6 3"
-                  rx={2}
-                />
-                {pw > 30 && ph > 20 && (
-                  <>
-                    <text
-                      x={cx}
-                      y={cy - (ph > 40 ? 8 : 0)}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={Math.min(13, (pw / previewLabel.length) * 1.4)}
-                      fontWeight="600"
-                      fill={strokeColor}
-                      stroke="white"
-                      strokeWidth="3"
-                      paintOrder="stroke"
-                    >
-                      {valid ? previewLabel : 'Too small'}
-                    </text>
-                    {ph > 40 && (
-                      <text
-                        x={cx}
-                        y={cy + 10}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize={10}
-                        fill={strokeColor}
-                        stroke="white"
-                        strokeWidth="3"
-                        paintOrder="stroke"
-                        opacity={0.9}
-                      >
-                        {displayW} × {displayH} {unit}
-                      </text>
-                    )}
-                  </>
-                )}
-              </g>
-            )
-          })()}
         </svg>
       </div>
 

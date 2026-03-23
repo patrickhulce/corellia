@@ -21,6 +21,7 @@ export function useResize(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
       const { x: startX, y: startY, widthFt: startW, heightFt: startH } = room
 
       e.currentTarget.setPointerCapture(e.pointerId)
+      dispatch({ type: 'RESIZE_START' })
 
       const onMove = (moveE) => {
         const ppu = Number(svg.dataset.ppu)
@@ -52,31 +53,36 @@ export function useResize(svgRef, dispatch, roomsRef, onSnapGuidesChange) {
           newH = Math.max(1, Math.min(startH + dy, gridRows - startY))
         }
 
-        // Snap
-        const otherRooms = (roomsRef?.current ?? []).filter((r) => r.id !== room.id)
-        const snapThreshold = SNAP_THRESHOLD_PX / ppu
-        const candidate = { x: newX, y: newY, widthFt: newW, heightFt: newH }
-        const snap = computeResizeSnap(candidate, otherRooms, edge, snapThreshold)
+        // Snap (Cmd bypasses snap)
+        if (!moveE.metaKey) {
+          const otherRooms = (roomsRef?.current ?? []).filter((r) => r.id !== room.id)
+          const snapThreshold = SNAP_THRESHOLD_PX / ppu
+          const candidate = { x: newX, y: newY, widthFt: newW, heightFt: newH }
+          const snap = computeResizeSnap(candidate, otherRooms, edge, snapThreshold)
 
-        // Apply snap offset to the correct dimension
-        if (snap.dx !== 0) {
-          if (edge.includes('e')) {
-            newW = Math.max(1, newW + snap.dx)
-          } else if (edge.includes('w')) {
-            newX = newX + snap.dx
-            newW = Math.max(1, newW - snap.dx)
+          // Apply snap offset to the correct dimension
+          if (snap.dx !== 0) {
+            if (edge.includes('e')) {
+              newW = Math.max(1, newW + snap.dx)
+            } else if (edge.includes('w')) {
+              newX = newX + snap.dx
+              newW = Math.max(1, newW - snap.dx)
+            }
           }
-        }
-        if (snap.dy !== 0) {
-          if (edge === 's' || edge === 'se' || edge === 'sw') {
-            newH = Math.max(1, newH + snap.dy)
-          } else if (edge === 'n' || edge === 'ne' || edge === 'nw') {
-            newY = newY + snap.dy
-            newH = Math.max(1, newH - snap.dy)
+          if (snap.dy !== 0) {
+            if (edge === 's' || edge === 'se' || edge === 'sw') {
+              newH = Math.max(1, newH + snap.dy)
+            } else if (edge === 'n' || edge === 'ne' || edge === 'nw') {
+              newY = newY + snap.dy
+              newH = Math.max(1, newH - snap.dy)
+            }
           }
+
+          onSnapGuidesChange?.(snap.guides)
+        } else {
+          onSnapGuidesChange?.({ x: [], y: [] })
         }
 
-        onSnapGuidesChange?.(snap.guides)
         dispatch({ type: 'RESIZE_ROOM', id: room.id, x: newX, y: newY, widthFt: newW, heightFt: newH })
       }
 
