@@ -14,7 +14,9 @@
       "mcp__mcp-puppeteer__puppeteer_navigate",
       "mcp__mcp-puppeteer__puppeteer_screenshot",
       "mcp__mcp-puppeteer__puppeteer_click",
-      "mcp__mcp-puppeteer__puppeteer_evaluate"
+      "mcp__mcp-puppeteer__puppeteer_evaluate",
+      "Bash(grep -r \"shiftKey\\\\|metaKey\\\\|ctrlKey\\\\|shift\\\\|ctrl\\\\|meta\" /Users/phulce/Code/OpenSource/corellia/src/js/buildbubble/src --include=*.js --include=*.jsx)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
