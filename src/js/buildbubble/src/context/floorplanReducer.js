@@ -5,6 +5,7 @@ export const initialState = {
   pixelsPerUnit: 40,
   gridCols: 200,
   gridRows: 200,
+  defaultCeilingHeightFt: 9,
 }
 
 export function floorplanReducer(state, action) {
@@ -43,11 +44,22 @@ export function floorplanReducer(state, action) {
         ),
       }
 
+    case 'UPDATE_ROOM':
+      return {
+        ...state,
+        rooms: state.rooms.map((r) =>
+          r.id === action.id ? { ...r, ...action.updates } : r
+        ),
+      }
+
     case 'SET_PIXELS_PER_UNIT':
       return { ...state, pixelsPerUnit: Math.min(120, Math.max(4, action.value)) }
 
     case 'SET_UNIT':
       return { ...state, unit: action.unit }
+
+    case 'SET_DEFAULT_CEILING_HEIGHT':
+      return { ...state, defaultCeilingHeightFt: action.value }
 
     default:
       return state

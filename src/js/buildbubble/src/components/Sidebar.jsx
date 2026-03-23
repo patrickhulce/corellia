@@ -3,9 +3,22 @@ import { AddRoomForm } from './AddRoomForm'
 import { RoomListItem } from './RoomListItem'
 import { ScaleControl } from './ScaleControl'
 
+const FT_TO_M = 0.3048
+
 export function Sidebar() {
-  const { state } = useFloorplan()
-  const { rooms } = state
+  const { state, dispatch } = useFloorplan()
+  const { rooms, unit, defaultCeilingHeightFt } = state
+
+  const displayCeiling = unit === 'm'
+    ? (defaultCeilingHeightFt * FT_TO_M).toFixed(1)
+    : defaultCeilingHeightFt
+
+  const handleCeilingChange = (e) => {
+    const val = parseFloat(e.target.value)
+    if (!val || val <= 0) return
+    const ft = unit === 'm' ? val / FT_TO_M : val
+    dispatch({ type: 'SET_DEFAULT_CEILING_HEIGHT', value: Math.round(ft * 10) / 10 })
+  }
 
   return (
     <aside className="w-72 shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg)] overflow-y-auto">
@@ -17,6 +30,21 @@ export function Sidebar() {
       <div className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)]">Add Room</h2>
         <AddRoomForm />
+      </div>
+
+      <div className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text)]">Settings</h2>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[var(--text)]">Default Ceiling Height ({unit})</label>
+          <input
+            type="number"
+            min="1"
+            step="0.5"
+            value={displayCeiling}
+            onChange={handleCeilingChange}
+            className="input"
+          />
+        </div>
       </div>
 
       <div className="p-4 border-b border-[var(--border)] flex flex-col gap-2">

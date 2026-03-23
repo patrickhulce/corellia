@@ -36,6 +36,7 @@ export function AddRoomForm() {
         heightFt: Math.round(heightFt * 10) / 10,
         x: 0,
         y: 0,
+        ceilingHeightFt: state.defaultCeilingHeightFt ?? 9,
       },
     })
     setForm(defaultForm)
