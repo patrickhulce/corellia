@@ -10,7 +10,11 @@
       "Bash(npm run:*)",
       "Bash(bash /Users/phulce/.claude/skills/semantic-commits-skill/scripts/create_checkpoint.sh)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__mcp-puppeteer__puppeteer_navigate",
+      "mcp__mcp-puppeteer__puppeteer_screenshot",
+      "mcp__mcp-puppeteer__puppeteer_click",
+      "mcp__mcp-puppeteer__puppeteer_evaluate"
     ]
   }
 }
