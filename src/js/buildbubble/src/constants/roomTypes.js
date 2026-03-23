@@ -9,6 +9,7 @@ export const ROOM_TYPE_OPTIONS = [
   { value: 'grass',    label: 'Grass' },
   { value: 'driveway', label: 'Driveway' },
   { value: 'patio',    label: 'Patio' },
+  { value: 'closet',   label: 'Closet' },
   { value: 'other',    label: 'Other' },
 ]
 
@@ -23,13 +24,14 @@ export const TYPE_COLORS = {
   grass:    { fill: '#ecfccb', stroke: '#65a30d' }, // lime
   driveway: { fill: '#e2e8f0', stroke: '#475569' }, // slate
   patio:    { fill: '#fed7aa', stroke: '#c2410c' }, // warm orange
+  closet:   { fill: '#e0e7ff', stroke: '#6366f1' }, // indigo
   other:    { fill: '#ffedd5', stroke: '#f97316' }, // orange
 }
 
 export const DEFAULT_DIMENSIONS = {
   living:   { widthFt: 15, heightFt: 12 },
   bedroom:  { widthFt: 12, heightFt: 11 },
-  bathroom: { widthFt: 8,  heightFt: 5 },
+  bathroom: { widthFt: 10, heightFt: 6 },
   kitchen:  { widthFt: 12, heightFt: 10 },
   dining:   { widthFt: 12, heightFt: 10 },
   office:   { widthFt: 10, heightFt: 10 },
@@ -37,5 +39,6 @@ export const DEFAULT_DIMENSIONS = {
   grass:    { widthFt: 20, heightFt: 20 },
   driveway: { widthFt: 20, heightFt: 10 },
   patio:    { widthFt: 12, heightFt: 10 },
+  closet:   { widthFt: 6,  heightFt: 4 },
   other:    { widthFt: 10, heightFt: 10 },
 }
