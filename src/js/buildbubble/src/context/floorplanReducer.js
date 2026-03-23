@@ -61,6 +61,50 @@ export function floorplanReducer(state, action) {
     case 'SET_DEFAULT_CEILING_HEIGHT':
       return { ...state, defaultCeilingHeightFt: action.value }
 
+    case 'BRING_TO_FRONT':
+      return {
+        ...state,
+        rooms: state.rooms.filter((r) => r.id !== action.id).concat(state.rooms.find((r) => r.id === action.id)),
+      }
+
+    case 'SEND_TO_BACK':
+      return {
+        ...state,
+        rooms: [state.rooms.find((r) => r.id === action.id), ...state.rooms.filter((r) => r.id !== action.id)],
+      }
+
+    case 'BRING_FORWARD': {
+      const idx = state.rooms.findIndex((r) => r.id === action.id)
+      if (idx === -1 || idx === state.rooms.length - 1) return state
+      const newRooms = [...state.rooms]
+      ;[newRooms[idx], newRooms[idx + 1]] = [newRooms[idx + 1], newRooms[idx]]
+      return { ...state, rooms: newRooms }
+    }
+
+    case 'SEND_BACKWARD': {
+      const idx = state.rooms.findIndex((r) => r.id === action.id)
+      if (idx === -1 || idx === 0) return state
+      const newRooms = [...state.rooms]
+      ;[newRooms[idx], newRooms[idx - 1]] = [newRooms[idx - 1], newRooms[idx]]
+      return { ...state, rooms: newRooms }
+    }
+
+    case 'ROTATE_ROOM':
+      return {
+        ...state,
+        rooms: state.rooms.map((r) =>
+          r.id === action.id
+            ? { ...r, widthFt: r.heightFt, heightFt: r.widthFt }
+            : r
+        ),
+      }
+
+    case 'LOAD_STATE':
+      return { ...initialState, ...action.state }
+
+    case 'CLEAR_STATE':
+      return { ...initialState }
+
     default:
       return state
   }
