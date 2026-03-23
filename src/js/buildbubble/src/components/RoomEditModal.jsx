@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
-export function RoomEditModal({ room, onSave, onClose }) {
+export function RoomEditModal({ room, onSave, onClose, defaultCeilingHeightFt }) {
   const [name, setName] = useState(room.name)
-  const [ceilingHeight, setCeilingHeight] = useState(room.ceilingHeightFt ?? 9)
+  const [ceilingHeight, setCeilingHeight] = useState(room.ceilingHeightFt != null ? room.ceilingHeightFt : '')
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') onClose()
@@ -17,8 +17,12 @@ export function RoomEditModal({ room, onSave, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     const updates = { name: name.trim() || room.name }
-    const val = parseFloat(ceilingHeight)
-    if (val > 0) updates.ceilingHeightFt = Math.round(val * 10) / 10
+    if (ceilingHeight === '' || ceilingHeight === null) {
+      updates.ceilingHeightFt = null
+    } else {
+      const val = parseFloat(ceilingHeight)
+      if (val > 0) updates.ceilingHeightFt = Math.round(val * 10) / 10
+    }
     onSave(room.id, updates)
     onClose()
   }
@@ -81,6 +85,7 @@ export function RoomEditModal({ room, onSave, onClose }) {
             min="1"
             step="0.5"
             value={ceilingHeight}
+            placeholder={defaultCeilingHeightFt}
             onChange={(e) => setCeilingHeight(e.target.value)}
           />
         </div>

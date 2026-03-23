@@ -522,6 +522,7 @@ export function FloorplanCanvas() {
           room={editingRoom}
           onSave={handleEditSave}
           onClose={() => setEditingRoom(null)}
+          defaultCeilingHeightFt={state.defaultCeilingHeightFt}
         />
       )}
 
