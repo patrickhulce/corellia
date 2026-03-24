@@ -3,6 +3,12 @@ import { TYPE_COLORS, ROOM_TYPE_OPTIONS } from '../constants/roomTypes'
 
 const FT_TO_M = 0.3048
 
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
 function TrashIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -44,7 +50,7 @@ export function RoomListItem({ room }) {
       />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-[var(--text-h)] truncate">{room.name}</div>
-        <div className="text-xs text-[var(--text)] truncate">{label} · {displayW}×{displayH} {unit}</div>
+        <div className="text-xs text-[var(--text)] truncate">{label} · {ordinal(room.level ?? 1)} Floor · {displayW}×{displayH} {unit}</div>
       </div>
       <button
         className="text-[var(--text)] hover:text-red-500 transition-colors p-1 rounded cursor-pointer"

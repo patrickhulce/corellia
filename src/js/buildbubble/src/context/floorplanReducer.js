@@ -1,15 +1,20 @@
 export const initialState = {
   rooms: [],
   selectedIds: [],
+  activeLevel: 1,
   unit: 'ft',
   pixelsPerUnit: 40,
   gridCols: 200,
   gridRows: 200,
   defaultCeilingHeightFt: 9,
+  roofPitch: '6/12',
 }
 
 export function floorplanReducer(state, action) {
   switch (action.type) {
+    case 'SET_ACTIVE_LEVEL':
+      return { ...state, activeLevel: action.level, selectedIds: [] }
+
     case 'ADD_ROOM':
       return { ...state, rooms: [...state.rooms, action.room], selectedIds: [action.room.id] }
 
@@ -87,6 +92,9 @@ export function floorplanReducer(state, action) {
     case 'SET_DEFAULT_CEILING_HEIGHT':
       return { ...state, defaultCeilingHeightFt: action.value }
 
+    case 'SET_ROOF_PITCH':
+      return { ...state, roofPitch: action.value }
+
     case 'BRING_TO_FRONT':
       return {
         ...state,
@@ -132,6 +140,10 @@ export function floorplanReducer(state, action) {
         loaded.selectedIds = action.state.selectedId ? [action.state.selectedId] : []
         delete loaded.selectedId
       }
+      // Ensure activeLevel is set
+      if (!('activeLevel' in action.state)) {
+        loaded.activeLevel = 1
+      }
       return loaded
     }
 
@@ -156,6 +168,6 @@ export function floorplanReducer(state, action) {
 export const SNAPSHOT_ACTIONS = new Set([
   'ADD_ROOM', 'DELETE_ROOM', 'UPDATE_ROOM', 'ROTATE_ROOM',
   'BRING_TO_FRONT', 'SEND_TO_BACK', 'BRING_FORWARD', 'SEND_BACKWARD',
-  'CLEAR_STATE', 'SET_DEFAULT_CEILING_HEIGHT', 'SET_UNIT',
-  'DRAG_START', 'RESIZE_START',
+  'CLEAR_STATE', 'SET_DEFAULT_CEILING_HEIGHT', 'SET_ROOF_PITCH', 'SET_UNIT',
+  'DRAG_START', 'RESIZE_START', 'SET_ACTIVE_LEVEL',
 ])

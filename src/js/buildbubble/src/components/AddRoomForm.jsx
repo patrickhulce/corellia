@@ -72,6 +72,7 @@ export function AddRoomForm() {
             heightFt: dims.heightFt,
             x: Math.max(0, Math.min(currentX, gridCols - dims.widthFt)),
             y: currentY,
+            level: state.activeLevel,
           },
         })
 

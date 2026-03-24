@@ -16,7 +16,8 @@
       "mcp__mcp-puppeteer__puppeteer_click",
       "mcp__mcp-puppeteer__puppeteer_evaluate",
       "Bash(grep -r \"shiftKey\\\\|metaKey\\\\|ctrlKey\\\\|shift\\\\|ctrl\\\\|meta\" /Users/phulce/Code/OpenSource/corellia/src/js/buildbubble/src --include=*.js --include=*.jsx)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(grep -r \"area\\\\|sqft\\\\|square\" /Users/phulce/Code/OpenSource/corellia/src/js/buildbubble/src --include=*.js --include=*.jsx)"
     ]
   }
 }

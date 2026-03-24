@@ -6,6 +6,7 @@ const SNAP_THRESHOLD_PX = 30
 export function useDrag(svgRef, dispatch, roomsRef, onSnapGuidesChange, selectedIdsRef) {
   const handlePointerDown = useCallback(
     (e, room) => {
+      if (e.button !== 0) return
       e.stopPropagation()
       const svg = svgRef.current
       if (!svg) return

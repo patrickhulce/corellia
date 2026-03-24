@@ -4,12 +4,13 @@ import { RoomListItem } from './RoomListItem'
 import { ScaleControl } from './ScaleControl'
 import { FileManagement } from './FileManagement'
 import { AccordionPanel } from './AccordionPanel'
+import { MaterialOverview } from './MaterialOverview'
 
 const FT_TO_M = 0.3048
 
 export function Sidebar() {
   const { state, dispatch } = useFloorplan()
-  const { rooms, unit, defaultCeilingHeightFt } = state
+  const { rooms, unit, defaultCeilingHeightFt, roofPitch } = state
 
   const displayCeiling = unit === 'm'
     ? (defaultCeilingHeightFt * FT_TO_M).toFixed(1)
@@ -33,7 +34,11 @@ export function Sidebar() {
         <AddRoomForm />
       </AccordionPanel>
 
-      <AccordionPanel title="Review" badge={rooms.length > 0 ? rooms.length : null}>
+      <AccordionPanel title="Overview" defaultOpen>
+        <MaterialOverview />
+      </AccordionPanel>
+
+      <AccordionPanel title="Space Details" badge={rooms.length > 0 ? rooms.length : null}>
         {rooms.length === 0 ? (
           <p className="text-xs text-[var(--text)] italic">No rooms yet. Add one above.</p>
         ) : (
@@ -58,6 +63,18 @@ export function Sidebar() {
             onChange={handleCeilingChange}
             className="input"
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[var(--text)]">Roof Pitch</label>
+          <select
+            value={roofPitch}
+            onChange={(e) => dispatch({ type: 'SET_ROOF_PITCH', value: e.target.value })}
+            className="input"
+          >
+            {['4/12', '5/12', '6/12', '7/12', '8/12', '9/12', '10/12', '11/12', '12/12'].map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
       </AccordionPanel>
     </aside>

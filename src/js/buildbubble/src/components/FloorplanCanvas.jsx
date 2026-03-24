@@ -6,11 +6,14 @@ import { RoomRect } from './RoomRect'
 import { RoomTypeModal } from './RoomTypeModal'
 import { RoomEditModal } from './RoomEditModal'
 import { Toolbar } from './Toolbar'
+import { LevelSwitcher } from './LevelSwitcher'
 import { ROOM_TYPE_OPTIONS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
 
 export function FloorplanCanvas() {
   const { state, dispatch } = useFloorplan()
-  const { rooms, selectedIds, pixelsPerUnit: ppu, gridCols, gridRows, unit } = state
+  const { rooms, selectedIds, activeLevel, pixelsPerUnit: ppu, gridCols, gridRows, unit } = state
+  const activeRooms = rooms.filter((r) => (r.level ?? 1) === activeLevel)
+  const inactiveRooms = rooms.filter((r) => (r.level ?? 1) !== activeLevel)
 
   const containerRef = useRef(null)
   const svgRef = useRef(null)
@@ -30,8 +33,8 @@ export function FloorplanCanvas() {
   const [editingRoom, setEditingRoom] = useState(null)
 
   // Snap guides
-  const roomsRef = useRef(rooms)
-  roomsRef.current = rooms
+  const roomsRef = useRef(activeRooms)
+  roomsRef.current = activeRooms
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
   const [snapGuides, setSnapGuides] = useState({ x: [], y: [] })
@@ -210,7 +213,7 @@ export function FloorplanCanvas() {
     }
     const mqRight = mq.x + mq.w
     const mqBottom = mq.y + mq.h
-    const hitIds = rooms
+    const hitIds = activeRooms
       .filter((r) => {
         const rRight = r.x + r.widthFt
         const rBottom = r.y + r.heightFt
@@ -220,7 +223,7 @@ export function FloorplanCanvas() {
     // Shift+drag adds to existing selection; plain drag replaces it
     const ids = e.shiftKey ? [...new Set([...selectedIds, ...hitIds])] : hitIds
     dispatch({ type: ids.length > 0 ? 'SELECT_ROOMS' : 'DESELECT', ids })
-  }, [dispatch, rooms, marqueeRect, selectedIds])
+  }, [dispatch, activeRooms, marqueeRect, selectedIds])
 
   // Double-click on SVG: open room type modal
   const handleSvgDoubleClick = useCallback((e) => {
@@ -253,6 +256,7 @@ export function FloorplanCanvas() {
         heightFt: dims.heightFt,
         x: Math.max(0, Math.min(modalPos.gridX, gridCols - dims.widthFt)),
         y: Math.max(0, Math.min(modalPos.gridY, gridRows - dims.heightFt)),
+        level: activeLevel,
       },
     })
     setModalPos(null)
@@ -313,7 +317,24 @@ export function FloorplanCanvas() {
           <rect width={svgW} height={svgH} fill="var(--bg)" />
           <rect width={svgW} height={svgH} fill="url(#grid-major)" />
 
-          {rooms.map((room) => {
+          {/* Ghost layer: inactive-level rooms */}
+          <g opacity="0.2" style={{ pointerEvents: 'none' }}>
+            {inactiveRooms.map((room) => (
+              <RoomRect
+                key={room.id}
+                room={room}
+                isSelected={false}
+                pixelsPerUnit={ppu}
+                unit={unit}
+                onPointerDown={null}
+                onResizeStart={null}
+                onDoubleClick={null}
+              />
+            ))}
+          </g>
+
+          {/* Active-level rooms */}
+          {activeRooms.map((room) => {
             const isSelected = selectedIds.includes(room.id)
             return (
               <RoomRect
@@ -396,6 +417,7 @@ export function FloorplanCanvas() {
       )}
 
       <Toolbar />
+      <LevelSwitcher />
     </div>
   )
 }
