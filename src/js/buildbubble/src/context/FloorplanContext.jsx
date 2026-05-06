@@ -4,10 +4,19 @@ import { floorplanReducer, initialState, SNAPSHOT_ACTIONS } from './floorplanRed
 const STORAGE_KEY = 'buildbubble-floorplan'
 const MAX_UNDO = 50
 
+function migrateRoomTypes(state) {
+  if (state.rooms) {
+    state.rooms = state.rooms.map((r) =>
+      r.type === 'pergola' ? { ...r, type: 'lanai' } : r
+    )
+  }
+  return state
+}
+
 function getInitialState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return { ...initialState, ...JSON.parse(saved) }
+    if (saved) return migrateRoomTypes({ ...initialState, ...JSON.parse(saved) })
   } catch { /* ignore corrupt data */ }
   return initialState
 }

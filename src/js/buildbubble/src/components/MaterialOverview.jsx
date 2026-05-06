@@ -9,12 +9,12 @@ const MATERIAL_CATEGORIES = [
   { label: 'Sod', types: ['grass'] },
   { label: 'Driveway', types: ['driveway'] },
   { label: 'Tile', types: ['bathroom'] },
-  { label: 'Patio', types: ['patio'] },
+  { label: 'Patio', types: ['patio', 'lanai'] },
   { label: 'LVP', types: ['living', 'dining', 'kitchen', 'hallway', 'office', 'other'] },
   { label: 'Carpet', types: ['bedroom', 'closet'] },
 ]
 
-const AUR_TYPES = [...INDOOR_TYPES, 'pergola']
+const AUR_TYPES = [...INDOOR_TYPES, 'lanai']
 
 const ROOF_PITCHES = [
   { label: '4/12', multiplier: Math.sqrt(4 * 4 + 144) / 12 },
@@ -188,6 +188,7 @@ export function MaterialOverview() {
 
   const aurArea = sumVisibleArea(rooms, visibleAreas, AUR_TYPES)
   const garageArea = sumVisibleArea(rooms, visibleAreas, ['garage'])
+  const lanaiArea = sumVisibleArea(rooms, visibleAreas, ['lanai'])
   const footprintArea = sumVisibleArea(groundFloorRooms, visibleAreas, INDOOR_TYPES)
 
   const roofFootprintArea = useMemo(() => {
@@ -204,7 +205,7 @@ export function MaterialOverview() {
     <div className="flex flex-col gap-1">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-h)]">Structural</p>
       <OverviewRow label="Area Under Roof" area={aurArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />
-      <OverviewRow label="Conditioned" area={aurArea - garageArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />
+      <OverviewRow label="Conditioned" area={aurArea - garageArea - lanaiArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />
       <OverviewRow label="Footprint" area={footprintArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />
       <OverviewRow label="Roof Footprint" area={roofFootprintArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />
       <OverviewRow label="Ext. Cladding" area={wallMetrics.exteriorArea} conversionFactor={conversionFactor} isMetric={isMetric} unitLabel={unitLabel} />

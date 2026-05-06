@@ -11,7 +11,7 @@ export const ROOM_TYPE_OPTIONS = [
   { value: 'driveway', label: 'Driveway' },
   { value: 'patio',    label: 'Patio' },
   { value: 'pool',     label: 'Pool' },
-  { value: 'pergola',  label: 'Pergola' },
+  { value: 'lanai',    label: 'Lanai' },
   { value: 'closet',   label: 'Closet' },
   { value: 'other',    label: 'Other' },
 ]
@@ -29,7 +29,7 @@ export const TYPE_COLORS = {
   driveway: { fill: '#e2e8f0', stroke: '#475569', pillBg: '#94a3b8' }, // slate-400
   patio:    { fill: '#fed7aa', stroke: '#c2410c', pillBg: '#fb923c' }, // orange-400
   pool:     { fill: '#cffafe', stroke: '#06b6d4', pillBg: '#22d3ee' }, // cyan-400
-  pergola:  { fill: '#fef3c7', stroke: '#d97706', pillBg: '#fbbf24' }, // amber-400
+  lanai:    { fill: '#fef3c7', stroke: '#d97706', pillBg: '#fbbf24' }, // amber-400
   closet:   { fill: '#e0e7ff', stroke: '#6366f1', pillBg: '#818cf8' }, // indigo-400
   other:    { fill: '#ffedd5', stroke: '#f97316', pillBg: '#fb923c' }, // orange-400
 }
@@ -47,7 +47,7 @@ export const DEFAULT_DIMENSIONS = {
   driveway: { widthFt: 20, heightFt: 10 },
   patio:    { widthFt: 12, heightFt: 10 },
   pool:     { widthFt: 16, heightFt: 10 },
-  pergola:  { widthFt: 12, heightFt: 12 },
+  lanai:    { widthFt: 12, heightFt: 12 },
   closet:   { widthFt: 6,  heightFt: 4 },
   other:    { widthFt: 10, heightFt: 10 },
 }

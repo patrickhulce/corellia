@@ -144,6 +144,10 @@ export function floorplanReducer(state, action) {
       if (!('activeLevel' in action.state)) {
         loaded.activeLevel = 1
       }
+      // Migrate pergola → lanai
+      loaded.rooms = loaded.rooms.map((r) =>
+        r.type === 'pergola' ? { ...r, type: 'lanai' } : r
+      )
       return loaded
     }
 
