@@ -1,6 +1,6 @@
 import { useFloorplan } from '../context/FloorplanContext'
 
-export function Toolbar() {
+export function Toolbar({ onZoomIn, onZoomOut }) {
   const { state, dispatch } = useFloorplan()
   const { selectedIds } = state
   const disabled = selectedIds.length === 0
@@ -12,6 +12,22 @@ export function Toolbar() {
 
   return (
     <div className="absolute top-4 right-4 flex flex-col gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 shadow-lg z-10">
+      <button onClick={onZoomIn} className="toolbar-btn" title="Zoom In">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <line x1="11" y1="8" x2="11" y2="14" />
+          <line x1="8" y1="11" x2="14" y2="11" />
+        </svg>
+      </button>
+      <button onClick={onZoomOut} className="toolbar-btn" title="Zoom Out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <line x1="8" y1="11" x2="14" y2="11" />
+        </svg>
+      </button>
+      <div className="h-px bg-[var(--border)] my-1" />
       <button
         disabled={disabled}
         onClick={() => handleAction('BRING_TO_FRONT')}

@@ -20,7 +20,11 @@ export function FloorplanCanvas() {
   const wrapperRef = useRef(null)
   const panState = useRef({ active: false, startX: 0, startY: 0, viewX: 0, viewY: 0 })
   const viewRef = useRef({ x: 0, y: 0 })
+  const ppuRef = useRef(ppu)
+  ppuRef.current = ppu
   const [isPanning, setIsPanning] = useState(false)
+  const spaceDown = useRef(false)
+  const [isSpaceDown, setIsSpaceDown] = useState(false)
 
   // Marquee selection state
   const marqueeStart = useRef(null)
@@ -66,9 +70,10 @@ export function FloorplanCanvas() {
     const container = containerRef.current
     if (!container) return
 
+    const currentPpu = ppuRef.current
     const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
-    const newPpu = Math.min(120, Math.max(4, ppu * factor))
-    const ratio = newPpu / ppu
+    const newPpu = Math.min(120, Math.max(4, currentPpu * factor))
+    const ratio = newPpu / currentPpu
 
     const rect = container.getBoundingClientRect()
     const cursorX = e.clientX - rect.left
@@ -78,8 +83,9 @@ export function FloorplanCanvas() {
     viewRef.current.x = (viewRef.current.x + cursorX) * ratio - cursorX
     viewRef.current.y = (viewRef.current.y + cursorY) * ratio - cursorY
 
+    ppuRef.current = newPpu
     dispatch({ type: 'SET_PIXELS_PER_UNIT', value: newPpu })
-  }, [ppu, dispatch])
+  }, [dispatch])
 
   useEffect(() => {
     const el = containerRef.current
@@ -88,9 +94,35 @@ export function FloorplanCanvas() {
     return () => el.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
 
-  // Keyboard delete handler
+  // Button-based zoom (centered on viewport)
+  const zoomByFactor = useCallback((factor) => {
+    const container = containerRef.current
+    if (!container) return
+    const currentPpu = ppuRef.current
+    const newPpu = Math.min(120, Math.max(4, currentPpu * factor))
+    const ratio = newPpu / currentPpu
+    const cx = container.clientWidth / 2
+    const cy = container.clientHeight / 2
+    viewRef.current.x = (viewRef.current.x + cx) * ratio - cx
+    viewRef.current.y = (viewRef.current.y + cy) * ratio - cy
+    ppuRef.current = newPpu
+    dispatch({ type: 'SET_PIXELS_PER_UNIT', value: newPpu })
+  }, [dispatch])
+
+  const zoomIn = useCallback(() => zoomByFactor(1.25), [zoomByFactor])
+  const zoomOut = useCallback(() => zoomByFactor(1 / 1.25), [zoomByFactor])
+
+  // Keyboard handler (delete, undo, spacebar pan)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === ' ') {
+        const tag = document.activeElement?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        e.preventDefault()
+        spaceDown.current = true
+        setIsSpaceDown(true)
+        return
+      }
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
@@ -104,9 +136,16 @@ export function FloorplanCanvas() {
         dispatch({ type: 'UNDO' })
       }
     }
+    const handleKeyUp = (e) => {
+      if (e.key === ' ') { spaceDown.current = false; setIsSpaceDown(false) }
+    }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    }
   }, [selectedIds, dispatch])
 
   // Center the view on the grid on first mount
@@ -119,17 +158,22 @@ export function FloorplanCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Middle-click pan
+  // Middle-click or spacebar+left-click pan
   const handleContainerPointerDown = useCallback((e) => {
-    if (e.button !== 1) return
+    const isMiddle = e.button === 1
+    const isSpacePan = e.button === 0 && spaceDown.current
+    if (!isMiddle && !isSpacePan) return
     e.preventDefault()
+    e.stopPropagation()
     panState.current = {
       active: true,
+      button: e.button,
       startX: e.clientX,
       startY: e.clientY,
       viewX: viewRef.current.x,
       viewY: viewRef.current.y,
     }
+    setIsPanning(true)
     containerRef.current.setPointerCapture(e.pointerId)
   }, [])
 
@@ -137,14 +181,14 @@ export function FloorplanCanvas() {
     if (!panState.current.active) return
     const dx = e.clientX - panState.current.startX
     const dy = e.clientY - panState.current.startY
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) setIsPanning(true)
     viewRef.current.x = panState.current.viewX - dx
     viewRef.current.y = panState.current.viewY - dy
     applyView()
   }, [applyView])
 
   const handleContainerPointerUp = useCallback((e) => {
-    if (e.button !== 1) return
+    if (!panState.current.active) return
+    if (e.button !== panState.current.button) return
     panState.current.active = false
     setIsPanning(false)
   }, [])
@@ -152,6 +196,7 @@ export function FloorplanCanvas() {
   // SVG background: start marquee select (deselect on click handled in pointerUp)
   const handleSvgPointerDown = useCallback((e) => {
     if (e.button !== 0) return
+    if (spaceDown.current) return // spacebar pan takes priority
     if (e.target !== svgRef.current && e.target.getAttribute('fill') !== 'url(#grid-major)') return
 
     const svg = svgRef.current
@@ -275,7 +320,7 @@ export function FloorplanCanvas() {
     <div
       ref={containerRef}
       className="flex-1"
-      style={{ background: 'var(--bg)', overflow: 'hidden', position: 'relative', cursor: isPanning ? 'grabbing' : 'default' }}
+      style={{ background: 'var(--bg)', overflow: 'hidden', position: 'relative', cursor: isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'default' }}
       onPointerDown={handleContainerPointerDown}
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
@@ -288,7 +333,7 @@ export function FloorplanCanvas() {
           data-ppu={ppu}
           data-cols={gridCols}
           data-rows={gridRows}
-          style={{ display: 'block', cursor: isPanning ? 'grabbing' : 'crosshair' }}
+          style={{ display: 'block', cursor: isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'crosshair' }}
           onPointerDown={handleSvgPointerDown}
           onPointerMove={handleSvgPointerMove}
           onPointerUp={handleSvgPointerUp}
@@ -416,7 +461,7 @@ export function FloorplanCanvas() {
         />
       )}
 
-      <Toolbar />
+      <Toolbar onZoomIn={zoomIn} onZoomOut={zoomOut} />
       <LevelSwitcher />
     </div>
   )
