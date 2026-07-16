@@ -10,7 +10,7 @@ const FT_TO_M = 0.3048
 
 export function Sidebar() {
   const { state, dispatch } = useFloorplan()
-  const { rooms, unit, defaultCeilingHeightFt, roofPitch } = state
+  const { rooms, unit, defaultCeilingHeightFt, roofPitch, exteriorWallFt, interiorWallFt } = state
 
   const displayCeiling = unit === 'm'
     ? (defaultCeilingHeightFt * FT_TO_M).toFixed(1)
@@ -21,6 +21,16 @@ export function Sidebar() {
     if (!val || val <= 0) return
     const ft = unit === 'm' ? val / FT_TO_M : val
     dispatch({ type: 'SET_DEFAULT_CEILING_HEIGHT', value: Math.round(ft * 10) / 10 })
+  }
+
+  const displayExteriorWall = unit === 'm' ? (exteriorWallFt * FT_TO_M).toFixed(2) : exteriorWallFt
+  const displayInteriorWall = unit === 'm' ? (interiorWallFt * FT_TO_M).toFixed(2) : interiorWallFt
+
+  const handleWallChange = (type) => (e) => {
+    const val = parseFloat(e.target.value)
+    if (Number.isNaN(val) || val < 0) return
+    const ft = unit === 'm' ? val / FT_TO_M : val
+    dispatch({ type, value: Math.round(ft * 100) / 100 })
   }
 
   return (
@@ -61,6 +71,28 @@ export function Sidebar() {
             step="0.5"
             value={displayCeiling}
             onChange={handleCeilingChange}
+            className="input"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[var(--text)]">Exterior Wall ({unit})</label>
+          <input
+            type="number"
+            min="0"
+            step={unit === 'm' ? '0.05' : '0.25'}
+            value={displayExteriorWall}
+            onChange={handleWallChange('SET_EXTERIOR_WALL_THICKNESS')}
+            className="input"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[var(--text)]">Interior Wall ({unit})</label>
+          <input
+            type="number"
+            min="0"
+            step={unit === 'm' ? '0.05' : '0.25'}
+            value={displayInteriorWall}
+            onChange={handleWallChange('SET_INTERIOR_WALL_THICKNESS')}
             className="input"
           />
         </div>

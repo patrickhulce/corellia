@@ -8,6 +8,8 @@ export const initialState = {
   gridRows: 200,
   defaultCeilingHeightFt: 9,
   roofPitch: '6/12',
+  exteriorWallFt: 0.5,
+  interiorWallFt: 0.33,
 }
 
 export function floorplanReducer(state, action) {
@@ -95,6 +97,12 @@ export function floorplanReducer(state, action) {
     case 'SET_ROOF_PITCH':
       return { ...state, roofPitch: action.value }
 
+    case 'SET_EXTERIOR_WALL_THICKNESS':
+      return { ...state, exteriorWallFt: Math.max(0, action.value) }
+
+    case 'SET_INTERIOR_WALL_THICKNESS':
+      return { ...state, interiorWallFt: Math.max(0, action.value) }
+
     case 'BRING_TO_FRONT':
       return {
         ...state,
@@ -173,5 +181,6 @@ export const SNAPSHOT_ACTIONS = new Set([
   'ADD_ROOM', 'DELETE_ROOM', 'UPDATE_ROOM', 'ROTATE_ROOM',
   'BRING_TO_FRONT', 'SEND_TO_BACK', 'BRING_FORWARD', 'SEND_BACKWARD',
   'CLEAR_STATE', 'SET_DEFAULT_CEILING_HEIGHT', 'SET_ROOF_PITCH', 'SET_UNIT',
+  'SET_EXTERIOR_WALL_THICKNESS', 'SET_INTERIOR_WALL_THICKNESS',
   'DRAG_START', 'RESIZE_START', 'SET_ACTIVE_LEVEL',
 ])

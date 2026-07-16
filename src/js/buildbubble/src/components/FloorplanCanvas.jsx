@@ -5,6 +5,7 @@ import { useResize } from '../hooks/useResize'
 import { RoomRect } from './RoomRect'
 import { RoomTypeModal } from './RoomTypeModal'
 import { RoomEditModal } from './RoomEditModal'
+import { SquareFootageOverlay } from './SquareFootageOverlay'
 import { Toolbar } from './Toolbar'
 import { LevelSwitcher } from './LevelSwitcher'
 import { ROOM_TYPE_OPTIONS, DEFAULT_DIMENSIONS } from '../constants/roomTypes'
@@ -35,6 +36,9 @@ export function FloorplanCanvas() {
 
   // Room edit modal (double-click on existing room)
   const [editingRoom, setEditingRoom] = useState(null)
+
+  // Fullscreen per-room square-footage breakdown overlay (toggled with `)
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   // Snap guides
   const roomsRef = useRef(activeRooms)
@@ -125,6 +129,11 @@ export function FloorplanCanvas() {
       }
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === '`') {
+        e.preventDefault()
+        setShowBreakdown((v) => !v)
+        return
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault()
         for (const id of selectedIds) {
@@ -459,6 +468,10 @@ export function FloorplanCanvas() {
           onClose={() => setEditingRoom(null)}
           defaultCeilingHeightFt={state.defaultCeilingHeightFt}
         />
+      )}
+
+      {showBreakdown && (
+        <SquareFootageOverlay onClose={() => setShowBreakdown(false)} />
       )}
 
       <Toolbar onZoomIn={zoomIn} onZoomOut={zoomOut} />
