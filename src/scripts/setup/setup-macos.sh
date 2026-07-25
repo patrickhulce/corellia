@@ -253,6 +253,10 @@ setup_code_directories() {
 
   clone_repo git@github.com:patrickhulce/blog.patrickhulce.com.git \
     "$HOME/Code/OpenSource/blog.patrickhulce.com"
+
+  # setup-languages.sh runs the installer out of this checkout, so the skills can
+  # be edited and reinstalled without a round trip through GitHub.
+  clone_repo git@github.com:patrickhulce/skillz.git "$HOME/Code/OpenSource/skillz"
 }
 
 # --- macOS quirks -----------------------------------------------------------
