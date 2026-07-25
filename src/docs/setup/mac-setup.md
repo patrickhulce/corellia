@@ -15,7 +15,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/patrickhulce/corellia/ma
 Open Ghostty, then run the rest:
 
 ```sh
-cd ~/Code/OpenSource/corellia
+cd ~/.corellia
 ./src/scripts/setup/bootstrap.sh --name <this-machine>
 ```
 
@@ -26,23 +26,65 @@ department owns:
 ./src/scripts/setup/bootstrap.sh --name <this-machine> --skip-managed
 ```
 
-That flag is inferred automatically on a machine with MDM enrollment or a
-`~/.config/work` directory; pass `--include-managed` to override the guess.
+That flag is inferred automatically on a machine with MDM enrollment or work
+dotfiles checked out; pass `--include-managed` to override the guess.
 
 Finally, open a new shell so `mise`, `direnv`, and `starship` load.
+
+### The setup checkout
+
+`~/.corellia` is deliberately not `~/Code/OpenSource/corellia`. It's a shallow,
+blobless, sparse clone holding only the four directories setup needs, listed in
+[`src/scripts/setup/sparse-paths`](../../scripts/setup/sparse-paths):
+
+```sh
+git clone --depth=1 --filter=blob:none --sparse ... ~/.corellia
+git -C ~/.corellia show HEAD:src/scripts/setup/sparse-paths |
+  git -C ~/.corellia sparse-checkout set --stdin
+```
+
+That's under 1MB instead of the 11G a full clone pulls, most of which is side
+projects and local scratch data that provisioning a Mac has no use for. The
+checkout has to stay on disk permanently, because `~/.zshrc` sources its shell
+config and the symlinks in `~/.config` point into it.
+
+The `git show` is the interesting part. A `--sparse` clone checks out root-level
+files and nothing else, so `src/` doesn't exist on disk when that list is needed —
+which is the usual argument for keeping such a file at the repo root. Reading it
+out of the object store instead lifts that constraint, so the list can live next to
+the scripts that use it. On a blobless clone git fetches that single blob on
+demand. `ensure_sparse_paths()` in `lib/common.sh` reads the same file straight
+off disk, since by then it's checked out, and reapplies it on every
+`setup-macos.sh` run so a directory added to the repo later shows up rather than
+staying invisible.
+
+To work on the monorepo itself, clone it properly and leave the setup checkout
+alone:
+
+```sh
+git clone git@github.com:patrickhulce/corellia.git ~/Code/OpenSource/corellia
+```
+
+Or, to turn the setup checkout into a full one:
+
+```sh
+git -C ~/.corellia fetch --unshallow
+git -C ~/.corellia sparse-checkout disable
+```
 
 ### Phases
 
 `bootstrap.sh` is a convenience wrapper. Every phase is independently runnable
 and safe to re-run, so use them directly when you only need one.
 
-| Script                     | What it does                                                                                    |
-| -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `setup-zsh.sh`             | Xcode CLT, Rosetta, Touch ID for sudo, Homebrew, oh-my-zsh, Ghostty, clone corellia              |
-| `setup-macos.sh`           | Homebrew packages, shell and git config, SSH identity, clone repos, macOS quirks                  |
-| `setup-managed-apps.sh`    | The apps IT normally owns, or a checklist of them when skipped                                    |
-| `setup-macos-defaults.sh`  | System Settings: computer name, trackpad, Dock, screenshots, Spotlight hotkeys                    |
-| `setup-languages.sh`       | Node via mise, global npm CLIs, Python tooling via uv, skillz agent skills                        |
+| Script                    | What it does                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `setup-zsh.sh`            | Xcode CLT, Rosetta, Touch ID for sudo, Homebrew, oh-my-zsh, Ghostty, clone corellia  |
+| `setup-macos.sh`          | Homebrew packages, shell and git config, SSH identity, clone repos, macOS quirks     |
+| `setup-managed-apps.sh`   | The apps IT normally owns, or a checklist of them when skipped                       |
+| `setup-macos-defaults.sh` | System Settings: computer name, trackpad, Dock, screenshots, reserved hotkeys         |
+| `setup-app-prefs.sh`      | Per-app preferences from `src/conf/defaults`, or `--export` to capture them           |
+| `setup-languages.sh`      | Node via mise, Rust via rustup, Python tooling via uv, skillz agent skills            |
 
 ### What lives where
 
@@ -56,33 +98,214 @@ in `$HOME`.
 - `src/conf/ghostty/config` — terminal
 - `src/conf/gitignore` — global gitignore, registered as `core.excludesfile`
 - `src/conf/DefaultKeyBinding.dict` — the Home/End fix
+- `src/conf/defaults/*.plist` — per-app preferences, applied by `setup-app-prefs.sh`
+
+Editor extensions are the exception, and stay a reference list in
+[`editor-extensions.md`](editor-extensions.md) rather than an install step:
+Cursor and VS Code both sync extensions through their own accounts, so scripting
+the install fights that sync instead of helping it.
 
 Machine-specific, non-secret overrides go in `~/.zshrc.local`, which the loader
 sources last.
 
 oh-my-zsh is part of that, and stays small: `src/conf/zsh/05-oh-my-zsh.zsh` sources
-it with no theme (starship draws the prompt) and one plugin. `~/.zshrc` holds only
+it with no theme (starship draws the prompt) and two plugins. `~/.zshrc` holds only
 the loader, so oh-my-zsh's template — with its own theme and plugin list — never
 gets written.
+
+The shell config, loader block included, is kept **valid in bash as well as zsh** —
+POSIX `.` rather than `source`, no glob qualifiers, and the genuinely zsh-only
+parts behind a `ZSH_VERSION` guard. This config outlives any one machine, and `sh`
+is what a container, a CI runner, or a Linux box hands you; a zsh-ism reaching one
+of those means a login shell that errors on every prompt, which is a bad thing to
+debug remotely. [`src/conf/zsh/README.md`](../../conf/zsh/README.md) has the rules
+and the two commands to check a change against both shells.
+
+## App preferences
+
+Some settings live in an app's own preference domain rather than System Settings,
+so `defaults write` with a hardcoded value is the wrong tool: you'd be
+transcribing a plist by hand. `setup-app-prefs.sh` goes the other way round.
+Configure the app once, capture it, commit it:
+
+```sh
+# Set up Rectangle, superwhisper, or Scroll Reverser however you like, then:
+./src/scripts/setup/setup-app-prefs.sh --export
+git diff src/conf/defaults
+```
+
+Applying is the default direction, and it merges rather than replaces: a domain
+where only two keys are tracked keeps the other twenty, so capturing a keyboard
+shortcut doesn't discard an app's licence or onboarding state.
+
+This is what carries Rectangle's window shortcuts (Ctrl+Opt+Cmd with the arrow
+keys — up to maximize, left and right to tile, down to centre) and superwhisper's
+dictation binding on Cmd+F5. Both are applied as part of `bootstrap.sh`, so
+neither needs setting up by hand again.
+
+Two details worth knowing, both learned the hard way:
+
+- A running app holds its preferences in memory and writes them back when it
+  quits, so the script quits each app before writing and relaunches it after.
+- It then re-reads the domain and warns if anything didn't stick, because an app
+  that is mid-quit can still flush over a write that has already landed.
+
+Only four domains are tracked, and the bar for adding a fifth is that the app is
+configured far enough from its defaults to be worth carrying. Ice and Amphetamine
+don't clear it — both are installed by the Brewfile and both start fresh on each
+machine. The tracked domains, the ones with only some keys captured, and the keys
+excluded everywhere are all listed at the top of the script with the reasoning
+attached.
 
 ## Manual Configurations
 
 What macOS won't let a script do. `setup-macos-defaults.sh` already covers the
 battery percentage, tap to click, bottom-right secondary click, hiding the Dock,
-keeping windows when quitting, the screenshot location, and freeing Cmd+Space
-from Spotlight.
+keeping windows when quitting, the screenshot location, and freeing both Cmd+Space
+and Cmd+F5.
 
 1. Change the default web browser (System Settings > Desktop & Dock)
 1. Configure Dock icons
-1. Configure Raycast on Cmd+Space, including its window management hotkeys
-   (Raycast replaces Spectacle, which was discontinued in 2020)
-1. Sign in to Cursor and enable Settings Sync
+1. Set Raycast's hotkey to Cmd+Space
+1. Sign in to Cursor and enable Settings Sync, which brings the extensions with
+   it. [`editor-extensions.md`](editor-extensions.md) is the reference list for
+   when it doesn't.
 1. Install the [Google Drive client](https://www.google.com/drive/download/)
-1. Install [ScrollReverser](https://pilotmoon.com/scrollreverser/)
 1. Keychain: export each certificate and private key individually from Keychain
    Access. Right-click and "Export" one at a time or they won't be included.
 1. Restart any app that was already running, so it picks up the Home/End key
    bindings.
+
+## Inventory of the old machine
+
+Everything installed on the machine this setup was written from, so that migrating
+is a decision about each item rather than a memory test. `src/conf/Brewfile` and
+`src/conf/Brewfile.managed` are the parts that provision themselves; this is the
+remainder.
+
+[`audit.md`](audit.md) tracks the open questions and one-time cleanups. This
+section is just the list.
+
+### Installed by hand — no cask exists, or the licence makes one pointless
+
+| App | Notes |
+| --- | --- |
+| Adobe Acrobat, Media Encoder, Photoshop, Premiere Pro, Substance 3D Painter | All installed *by* Creative Cloud, which is the only piece with a cask |
+| DaVinci Resolve, Blackmagic RAW, Blackmagic Proxy Generator | Blackmagic's own downloads, behind a registration form |
+| Nuke, RV, REDCINE-X Professional, PIX | Licensed film tools, node-locked or floating-licence |
+| Home Designer 2026 | Chief Architect, licensed per version |
+| Cricut Design Space | Vendor installer only |
+| Lumina | Webcam control |
+| Demucs-GUI, Invoke Community Edition | Local ML tools, GitHub releases |
+| NVIDIA Nsight Systems | Requires an NVIDIA developer account |
+| Parallels Desktop | Licensed |
+| Antigravity, Gemini | Google's desktop AI apps |
+| AnyDesk, YubiKey Manager | Vendor downloads |
+| Google Drive | Vendor download, already on the checklist above |
+| YouTube Music Desktop App | A `ytmdesktop-youtube-music` cask exists but tracks a different project |
+| Unity editor | The Hub has a cask; the editors it installs do not |
+
+Licensed separately, so installing the app is only half the job: superwhisper,
+Home Designer, Nuke, Parallels, Adobe, DaVinci Resolve Studio.
+
+### Deliberately not carried over
+
+Installed on the old machine and left out on purpose. Each is one line to restore
+if a specific job needs it — the reason it's absent is the useful part.
+
+| Not carried over | Why |
+| --- | --- |
+| Alfred | Raycast covers it, and two launchers fighting over one hotkey is worse than either |
+| Spectacle | Discontinued in 2020. Rectangle replaces it |
+| iTerm2, Warp | Ghostty is the terminal of record, and its config is text rather than a binary plist |
+| Wispr Flow | superwhisper does dictation |
+| KeyCastr | On-screen keystrokes, only wanted while recording a screencast |
+| SketchUp, Sweet Home 3D, OpenSCAD | Occasional CAD. Blender stays, since it earns its keep |
+| Unity, Unity Hub | Not doing game work right now |
+| Stability Matrix | Superseded by Invoke for local image generation |
+| darktable | Lightroom via Creative Cloud covers it |
+| Cyberduck | `rclone` or the AWS and gcloud CLIs cover the same ground |
+| JetBrains Toolbox, Gateway, PyCharm | Cursor and VS Code are the editors |
+| VS Code Insiders | One VS Code channel is enough |
+| ChatGPT Classic | Superseded by the current ChatGPT app |
+| Microsoft Remote Desktop / Windows App | Install if a Windows box reappears |
+| miniconda | Replaced by `uv` |
+| XQuartz | A dependency of a few older tools; install when something asks |
+| `google-cloud-sdk` cask | Renamed to `gcloud-cli`, which is in the Brewfile. Having both is the cause of the stale-Caskroom warning |
+| `hub`, `diff-so-fancy` | Replaced by `gh` and `delta` |
+| `nvm`, `sdkman`, `pyenv`, `pipx` | Replaced by `mise` and `uv` |
+| `mysql`, `postgresql@14`, `redis` | Three always-on daemons is a bad default. Per-project containers, or start one on demand |
+| Global `typescript`, `yarn` | Project dependencies. A global pin only creates version skew |
+
+### Command line tools not in the Brewfile
+
+Homebrew formulae that were installed directly rather than as dependencies, and
+are not in `src/conf/Brewfile`:
+
+- `ruff` — Python linter, and the editor extension lists reference it. Comes from
+  `uv tool install ruff` per project instead, so it doesn't need to be global.
+- `black` — superseded by `ruff format`.
+- `caddy` — web server, wanted only when a project needs one.
+- `emscripten`, `glew`, `openimageio`, `openjph`, `openvino`, `qt@5`, `tcl-tk` —
+  heavy native libraries pulled in for specific projects. Install per project.
+- `curl`, `gnu-tar`, `libfido2`, `openldap` — Homebrew builds of things macOS
+  already ships. Only worth it when a specific flag is missing.
+- `ffmpeg@4` — pinned old major for one project. The Brewfile has current `ffmpeg`.
+- `reattach-to-user-namespace` — tmux clipboard glue, unnecessary since macOS 10.14.
+
+Global npm packages beyond the ones `setup-languages.sh` installs: `@openai/codex`,
+`cursor-history`, `git2txt`, `http-server`, `surge`, `vercel`. All genuine global
+CLIs; see the audit for whether they should join the list.
+
+`pipx` tools, being migrated to `uv tool install`: `aider-chat`, `yt-dlp`,
+`viztracer`, `asitop`, `maturin`, `hatch`, `tox`, `invoke`, `poetry`, `fal`,
+`runpod`.
+
+### Fonts
+
+`~/Library/Fonts` holds Aurebesh (and its condensed, bold, and italic cuts),
+Starjedi, BonheurRoyale, BrunoAce, and Handodle. Small enough to commit and
+symlink; the audit tracks that. `font-jetbrains-mono-nerd-font` comes from the
+Brewfile.
+
+### Work-managed, out of scope
+
+Installed by IT and not this repo's business. `Brewfile.managed` covers the ones
+with casks — Cursor, Creative Cloud, Slack, Zoom, Docker Desktop, Chrome — and the
+rest arrive as portal installs and MDM payloads: Okta Verify, Ivanti Secure Access,
+CrowdStrike Falcon, IBM Aspera (Connect, Crypt, Launcher), Managed Software Center,
+PCoIPClient, DEPNotify, Nudge, Netflix Notifier, the licensed Netflix Sans fonts,
+the `nflx-*` pipx packages, and the `netflix.*` editor extensions.
+
+`~/.gitconfig` also opens with a Metatron autoconfig block that the `metatron` CLI
+rewrites. That's why `setup-macos.sh` sets individual keys with
+`git config --global` rather than symlinking a whole gitconfig from this repo.
+
+## Keyboard shortcuts macOS reserves
+
+Two of the shortcuts this setup wants are taken out of the box, so
+`setup-macos-defaults.sh` disables the macOS side in `com.apple.symbolichotkeys`:
+
+| ID    | macOS shortcut                | Default          | Freed for   |
+| ----- | ----------------------------- | ---------------- | ----------- |
+| `64`  | Spotlight search              | Cmd+Space        | Raycast     |
+| `65`  | Finder search window          | Opt+Cmd+Space    | Raycast     |
+| `59`  | Turn VoiceOver on or off      | Cmd+F5           | superwhisper |
+| `162` | Accessibility Shortcuts panel | Opt+Cmd+F5       | superwhisper |
+| `164` | Dictation                     | Ctrl+Opt+Cmd+F5  | superwhisper |
+
+Only the shortcut is disabled for `164`. Dictation itself stays enabled, so it's
+still reachable from the Edit menu and nothing breaks if superwhisper goes away.
+
+Two things make this fiddlier than it looks. The masks for `59` and `162` include
+the fn bit (`8388608`) on top of the values every reference table lists, because
+macOS records fn as part of a function-key shortcut on a keyboard where F5 is a
+media key — while `164`, on the same key, doesn't. Each one is the default read
+back from `com.apple.symbolichotkeys` rather than worked out from a table, which
+is the only way to get them right. And superwhisper uses Carbon key codes rather
+than the Cocoa masks above, so its own binding reads
+`{"carbonModifiers":256,"carbonKeyCode":96}` — Carbon's `cmdKey` is `256`, and
+`96` is F5.
 
 ## Secrets
 
@@ -191,11 +414,18 @@ For anyone wondering where a familiar tool went:
 - `conda` and `pipx` → `uv`
 - `diff-so-fancy` → `delta`, a Homebrew formula instead of a global npm package
 - `hub` → `gh`
-- Spectacle → Raycast
+- Spectacle → Rectangle, whose shortcuts are a plist this repo can version.
+  Raycast is the launcher, not the window manager: its hotkeys live in an
+  encrypted SQLite store that can't be exported to anything reviewable.
 - iTerm2 and its binary `.plist` → Ghostty and a text config
+- Monaco → JetBrainsMono Nerd Font, because starship's prompt draws glyphs Monaco
+  doesn't carry
 - Long `brew install` lines → `Brewfile` and `brew bundle`
 - Always-on mysql, postgresql, and redis services → per-project containers, or
   install one on demand
 - Global `typescript` and `yarn` → project dependencies
+- A full 11G clone of this repo just to run setup → a sparse one at `~/.corellia`
+- Clicking through preference windows on each new machine → `src/conf/defaults`
+  and `setup-app-prefs.sh`
 
 </details>
