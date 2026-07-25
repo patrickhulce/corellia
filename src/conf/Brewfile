@@ -1,0 +1,140 @@
+# Personal machine packages. Applied by setup-macos.sh via:
+#
+#   brew bundle --file src/conf/Brewfile
+#
+# Anything an employer's IT department installs for you lives in Brewfile.managed
+# instead, so it can be skipped on a work machine. See setup-managed-apps.sh.
+#
+# To see what's installed here but not captured below:
+#   brew bundle dump --file /tmp/Brewfile.actual
+#   diff <(sort src/conf/Brewfile) <(sort /tmp/Brewfile.actual)
+#
+# src/docs/setup/audit.md records what was deliberately left out, and why.
+
+# GNU/BSD parity and shell basics
+brew "coreutils"
+brew "findutils"
+brew "rename"
+brew "wget"
+
+# Version control
+brew "git"
+brew "git-lfs"
+brew "git-delta"      # git pager, replaces diff-so-fancy
+brew "gh"             # replaces the archived `hub`
+brew "git-filter-repo" # history surgery, the supported replacement for filter-branch
+
+# Runtime and package management
+brew "mise"   # node/java/go version manager, replaces nvm and sdkman
+brew "uv"     # python interpreters, venvs, and tools, replaces conda and pipx
+brew "rustup" # rust toolchains; see setup-languages.sh and src/conf/zsh/10-path.zsh
+brew "deno"
+
+# Everyday CLI
+brew "bat"
+brew "btop"
+brew "direnv"
+brew "eza"
+brew "fd"
+brew "fzf"
+brew "httpie"
+brew "jq"
+brew "ripgrep"
+brew "tldr"
+brew "tmux"
+brew "zoxide"
+
+# Shell experience
+brew "starship"
+brew "zsh-autosuggestions"
+
+# Shell script linting, mirrors .github/workflows/lint.yml
+brew "shellcheck"
+brew "shfmt"
+
+# Native build toolchain. Pulled in as dependencies anyway, but declared because
+# building ffmpeg, native node modules, and Rust crates with C deps needs them.
+brew "automake"
+brew "clang-format"
+brew "cmake"
+brew "meson"
+brew "nasm"
+brew "pkgconf"
+brew "yasm"
+
+# Media
+brew "ffmpeg"
+brew "imagemagick"
+brew "exiftool"
+
+# wasm. The bottle, rather than `cargo install wasm-pack`, which builds from
+# source and takes minutes.
+brew "wasm-pack"
+
+# Cloud
+brew "awscli"
+
+# Mac App Store CLI, for the apps Homebrew can't reach
+brew "mas"
+
+# Terminal, launcher, and window management. Rectangle owns the window shortcuts
+# because Raycast keeps its hotkeys in an encrypted SQLite store that can't be
+# exported or reviewed; Rectangle's live in a plist, versioned in
+# src/conf/defaults and applied by setup-app-prefs.sh.
+cask "ghostty"
+cask "raycast"
+cask "rectangle"
+
+# Fonts. starship's prompt and eza's icons need Nerd Font glyphs, and
+# src/conf/ghostty/config asks for this family by name.
+cask "font-jetbrains-mono-nerd-font"
+
+# Browsers. Chrome itself is in Brewfile.managed, since IT owns it on a work
+# machine; the canary channel is nobody's managed install.
+cask "arc"
+cask "firefox"
+cask "google-chrome@canary"
+cask "microsoft-edge"
+
+# Cloud
+cask "gcloud-cli" # renamed from google-cloud-sdk
+
+# AI. superwhisper is dictation on Cmd+F5; setup-macos-defaults.sh frees that
+# combo from VoiceOver.
+cask "chatgpt"
+cask "claude"
+cask "superwhisper"
+
+# Personal apps
+cask "1password"
+cask "1password-cli"
+cask "discord"
+cask "jordanbaird-ice" # menu bar manager
+cask "ngrok"
+cask "rescuetime"
+cask "scroll-reverser" # independent scroll direction for mouse and trackpad
+cask "spotify"
+cask "tailscale-app"
+
+# Media and creative
+cask "audacity"
+cask "blender"
+cask "imageoptim"
+cask "inkscape"
+cask "vlc"
+cask "xnviewmp"
+
+# Hardware. Key light and Facecam control.
+cask "elgato-control-center"
+
+# Mac App Store. Needs `mas` above plus a signed-in App Store, so a fresh
+# machine may report these as failures until you sign in.
+mas "Amphetamine", id: 937984704
+
+# Databases are intentionally not installed or started here. Three always-on
+# daemons is a bad default for occasional use. Run them per project in a
+# container, or install and start one on demand:
+#
+#   brew install postgresql@18 && brew services start postgresql@18
+#   brew install mysql         && brew services start mysql
+#   brew install redis         && brew services start redis

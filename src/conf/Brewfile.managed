@@ -1,0 +1,27 @@
+# Software that an employer's IT department typically owns.
+#
+# On a personal machine these get installed like anything else. On a work
+# machine they must come from the corporate self-service portal instead, so
+# installing the open-source Homebrew build would leave you with an
+# unmanaged, unlicensed, or unsupported copy.
+#
+# Applied by setup-managed-apps.sh, which skips the whole file when it detects
+# a managed machine (or when you pass --skip-managed) and prints this list as a
+# reminder of what to install from the portal instead.
+
+# Editors
+cask "cursor"
+
+# Creative
+cask "adobe-creative-cloud"
+
+# Communication
+cask "slack"
+cask "zoom"
+
+# Containers
+cask "docker-desktop" # renamed from docker
+
+# Browsers
+cask "google-chrome"
+

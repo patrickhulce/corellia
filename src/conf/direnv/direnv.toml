@@ -1,0 +1,12 @@
+# direnv, linked to ~/.config/direnv/direnv.toml by setup-macos.sh. The zsh hook
+# that makes it work lives in src/conf/zsh/20-tools.zsh.
+
+[global]
+# Print the "loading .envrc" line but not the list of every variable that
+# changed, which on `cd` into a project is noise, and on `cd` out is a list of
+# names you'd rather not leave in the scrollback. Needs direnv 2.34 or newer.
+hide_env_diff = true
+
+# An .envrc that shells out — `op read` for a secret reference, a version
+# lookup — routinely takes longer than direnv's 5s default before it complains.
+warn_timeout = "20s"

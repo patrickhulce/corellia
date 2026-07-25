@@ -1,0 +1,17 @@
+# Directories a setup checkout needs, applied by `git sparse-checkout set`.
+#
+# setup-zsh.sh clones this repo sparsely so provisioning a Mac doesn't drag in the
+# side projects. It can't read this file from disk at that point — a --sparse clone
+# checks out root-level files and nothing else — so it reads it out of the object
+# store with `git show` instead. ensure_sparse_paths() in lib/common.sh reads it
+# from disk, since by then it's checked out.
+#
+# Comments and blank lines are stripped before git sees them.
+#
+# To work on the rest of the monorepo instead:
+#   git fetch --unshallow && git sparse-checkout disable
+
+src/conf
+src/docs/setup
+src/scripts/global
+src/scripts/setup
