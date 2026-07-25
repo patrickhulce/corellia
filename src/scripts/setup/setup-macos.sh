@@ -50,22 +50,31 @@ install_packages() {
 # One loader block in ~/.zshrc that sources the versioned config in the repo.
 # The old approach appended settings directly, which duplicated itself on every
 # re-run and left the real configuration untracked.
+#
+# The block stays valid in bash as well as zsh: POSIX `.` rather than the `source`
+# builtin, no glob qualifiers, no arrays. See src/conf/zsh/README.md.
 link_shell_config() {
   local block
   block="$(
     cat <<EOF
 # >>> corellia >>>
 # Shell config lives in the repo. Edit src/conf/zsh/*.zsh, not this block.
+#
+# Deliberately bash-compatible, so the same block works from ~/.bashrc: POSIX
+# \`.\` instead of zsh's \`source\`, and no glob qualifiers or arrays.
 export CORELLIA_HOME="$CORELLIA_ROOT"
-# (N) is zsh's null_glob qualifier: if the repo moves, shells still start
-# cleanly instead of erroring on every prompt.
-for _corellia_zsh in "\$CORELLIA_HOME"/src/conf/zsh/*.zsh(N); do
-  [ -r "\$_corellia_zsh" ] && source "\$_corellia_zsh"
-done
-unset _corellia_zsh
+# Guarding on the directory keeps a shell starting cleanly if the repo moves.
+# zsh would otherwise abort the loop with "no matches found" on every prompt,
+# which is what the (N) qualifier used to handle at the cost of portability.
+if [ -d "\$CORELLIA_HOME/src/conf/zsh" ]; then
+  for _corellia_rc in "\$CORELLIA_HOME"/src/conf/zsh/*.zsh; do
+    [ -r "\$_corellia_rc" ] && . "\$_corellia_rc"
+  done
+  unset _corellia_rc
+fi
 # Machine-specific, non-secret overrides.
 if [ -r "\$HOME/.zshrc.local" ]; then
-  source "\$HOME/.zshrc.local"
+  . "\$HOME/.zshrc.local"
 fi
 # <<< corellia <<<
 EOF

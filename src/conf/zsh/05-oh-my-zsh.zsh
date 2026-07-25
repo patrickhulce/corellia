@@ -5,8 +5,12 @@
 # is already covered elsewhere: starship draws the prompt, zsh-autosuggestions
 # comes from Homebrew, and 20-tools.zsh and 30-aliases.zsh handle the rest. What
 # remains is its history, completion, and key binding defaults.
+#
+# The one file here with no bash equivalent, so the whole thing is behind a
+# ZSH_VERSION guard rather than left to fail halfway through. Everything below
+# still has to *parse* under bash, which `zstyle` and the array assignment do.
 
-if [ -d "$HOME/.oh-my-zsh" ]; then
+if [ -n "${ZSH_VERSION:-}" ] && [ -d "$HOME/.oh-my-zsh" ]; then
   export ZSH="$HOME/.oh-my-zsh"
 
   # Empty on purpose: starship replaces the prompt a moment later in
@@ -42,5 +46,5 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
   # effect is making long pastes slow.
   DISABLE_MAGIC_FUNCTIONS=true
 
-  source "$ZSH/oh-my-zsh.sh"
+  . "$ZSH/oh-my-zsh.sh"
 fi
