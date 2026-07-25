@@ -19,7 +19,8 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
 
-Runs setup-macos.sh, setup-macos-defaults.sh, and setup-languages.sh in order.
+Runs setup-macos.sh, setup-macos-defaults.sh, setup-app-prefs.sh, and
+setup-languages.sh in order.
 
 Options:
   --name <name>       Passed through to setup-macos-defaults.sh.
@@ -63,7 +64,12 @@ main() {
     bash "$CORELLIA_SETUP_DIR/setup-macos-defaults.sh"
   fi
 
-  log "Phase 4: languages and tooling"
+  # After the system defaults, so an app quit and relaunched here isn't then
+  # restarted out from under the user by the killall in the phase above.
+  log "Phase 4: app preferences"
+  bash "$CORELLIA_SETUP_DIR/setup-app-prefs.sh"
+
+  log "Phase 5: languages and tooling"
   bash "$CORELLIA_SETUP_DIR/setup-languages.sh"
 
   log "Done. Open a new shell, then see src/docs/setup/mac-setup.md for the manual steps."

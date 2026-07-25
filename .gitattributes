@@ -1,2 +1,9 @@
+# `binary` is a macro for -diff -merge -text. Right for the plists apps write for
+# themselves, which are bplist00 and unreviewable.
 *.plist binary
+
+# The exception: setup-app-prefs.sh writes these as XML precisely so a change to
+# a keyboard shortcut shows up as a readable diff.
+src/conf/defaults/*.plist text diff
+
 *.ipynb filter=strip-notebook-output
