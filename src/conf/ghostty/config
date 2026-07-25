@@ -1,0 +1,21 @@
+# Ghostty configuration, symlinked to ~/.config/ghostty/config by setup-macos.sh.
+#
+# Replaces src/conf/iterm2.plist. Same settings the iTerm2 profile carried, in a
+# format that can actually be reviewed in a diff.
+
+font-family = Monaco
+font-size = 18
+
+background-opacity = 0.95
+
+# Bytes, not lines. Roughly equivalent to the old 10,000-line scrollback.
+scrollback-limit = 10000000
+
+# Reopen the previous session's windows, like iTerm2's "reuse previous session".
+window-save-state = always
+
+# Send Option as Alt so readline word-motion bindings work.
+macos-option-as-alt = true
+
+keybind = cmd+backslash=new_split:right
+keybind = cmd+shift+backslash=new_split:down

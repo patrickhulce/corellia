@@ -1,0 +1,79 @@
+# Personal machine packages. Applied by setup-macos.sh via:
+#
+#   brew bundle --file src/conf/Brewfile
+#
+# Anything an employer's IT department installs for you lives in Brewfile.managed
+# instead, so it can be skipped on a work machine. See setup-managed-apps.sh.
+#
+# To capture what's currently installed:
+#   brew bundle dump --file /tmp/Brewfile.actual --describe
+
+# GNU/BSD parity and shell basics
+brew "coreutils"
+brew "findutils"
+brew "rename"
+
+# Version control
+brew "git"
+brew "git-lfs"
+brew "git-delta" # git pager, replaces diff-so-fancy
+brew "gh"        # replaces the archived `hub`
+
+# Runtime and package management
+brew "mise" # node/java/go version manager, replaces nvm and sdkman
+brew "uv"   # python interpreters, venvs, and tools, replaces conda and pipx
+
+# Everyday CLI
+brew "bat"
+brew "btop"
+brew "direnv"
+brew "eza"
+brew "fd"
+brew "fzf"
+brew "jq"
+brew "ripgrep"
+brew "tldr"
+brew "zoxide"
+
+# Shell experience
+brew "starship"
+brew "zsh-autosuggestions"
+
+# Shell script linting, mirrors .github/workflows/lint.yml
+brew "shellcheck"
+brew "shfmt"
+
+# Media
+brew "ffmpeg"
+
+# Mac App Store CLI, for the apps Homebrew can't reach
+brew "mas"
+
+# Terminal and launcher. Raycast also provides window management, which is why
+# the discontinued Spectacle cask is gone.
+cask "ghostty"
+cask "raycast"
+
+# Browsers
+cask "firefox"
+cask "google-chrome@canary"
+cask "microsoft-edge"
+
+# Cloud
+cask "gcloud-cli" # renamed from google-cloud-sdk
+
+# Personal apps
+cask "rescuetime"
+cask "spotify"
+cask "1password"
+cask "1password-cli"
+cask "jordanbaird-ice"
+
+
+# Databases are intentionally not installed or started here. Three always-on
+# daemons is a bad default for occasional use. Run them per project in a
+# container, or install and start one on demand:
+#
+#   brew install postgresql@18 && brew services start postgresql@18
+#   brew install mysql         && brew services start mysql
+#   brew install redis         && brew services start redis

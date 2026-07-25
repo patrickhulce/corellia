@@ -1,0 +1,37 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shell:
+    name: shell scripts
+    runs-on: ubuntu-latest
+    env:
+      SHFMT_VERSION: v3.13.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shfmt
+        run: |
+          curl -fsSL -o /tmp/shfmt \
+            "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_amd64"
+          chmod +x /tmp/shfmt
+          sudo mv /tmp/shfmt /usr/local/bin/shfmt
+
+      # setup-linux.sh, setup-wsl.sh, and setup-ffmpeg.sh are excluded until they
+      # get the same rewrite the macOS scripts did. See src/docs/setup/mac-setup.md.
+      - name: Collect shell scripts
+        run: |
+          shfmt -f src/scripts/setup src/scripts/global \
+            | grep -vE 'setup-(linux|wsl|ffmpeg)\.sh$' \
+            | tee scripts.txt
+          test -s scripts.txt
+
+      - name: shellcheck
+        run: xargs shellcheck -x <scripts.txt
+
+      - name: shfmt
+        run: xargs shfmt -d -i 2 -ci <scripts.txt

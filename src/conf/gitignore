@@ -1,0 +1,31 @@
+# Global gitignore, linked to ~/.gitignore and registered as core.excludesfile
+# by setup-macos.sh.
+
+.vscode/
+.idea/
+.nyc_output/
+coverage/
+node_modules/
+
+*.local
+*.secret
+
+# Project-local env files. Even when they hold only 1Password secret references
+# rather than values, keep them out of history by default; commit an
+# .envrc.example or .env.example instead.
+.env
+.envrc
+
+npm-debug.log
+yarn-error.log
+lerna-debug.log
+pnpm-debug.log
+
+# from https://gist.github.com/octocat/9257657
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

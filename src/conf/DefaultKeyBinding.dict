@@ -1,0 +1,13 @@
+/* Make Home and End move to the beginning and end of the line in Cocoa text
+   views, instead of scrolling to the top and bottom of the document.
+
+   Linked to ~/Library/KeyBindings/DefaultKeyBinding.dict by setup-macos.sh.
+   Applications read this at launch, so restart anything already running.
+
+   See https://apple.stackexchange.com/questions/16135 */
+{
+    "\UF729"  = moveToBeginningOfLine:; // home
+    "\UF72B"  = moveToEndOfLine:; // end
+    "$\UF729" = moveToBeginningOfLineAndModifySelection:; // shift-home
+    "$\UF72B" = moveToEndOfLineAndModifySelection:; // shift-end
+}
