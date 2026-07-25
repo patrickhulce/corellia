@@ -284,6 +284,9 @@ main() {
   require_macos
   parse_common_flags "$@"
 
+  log "Checkout"
+  ensure_sparse_paths
+
   log "Packages"
   install_packages
 

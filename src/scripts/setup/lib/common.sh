@@ -74,6 +74,33 @@ link_config() {
   step "Linked $link"
 }
 
+# --- sparse checkout --------------------------------------------------------
+
+# ensure_sparse_paths
+#
+# Re-applies sparse-paths to a sparse setup checkout. Without this, a directory
+# added to the repo later would stay invisible on every machine that cloned
+# before it existed, because sparse-checkout only knows the patterns it was last
+# given. A no-op on a full clone.
+#
+# Read from disk here, unlike in setup-zsh.sh: src/scripts/setup is one of the
+# paths in the list, so by the time this runs the file is checked out.
+ensure_sparse_paths() {
+  local paths_file="$CORELLIA_SETUP_DIR/sparse-paths"
+
+  [ -f "$paths_file" ] || return 0
+
+  # Exits non-zero on a worktree that isn't sparse, which is the check we want.
+  if ! git -C "$CORELLIA_ROOT" sparse-checkout list >/dev/null 2>&1; then
+    skip "checkout is not sparse, nothing to reapply"
+    return 0
+  fi
+
+  step "Reapplying the sparse checkout paths"
+  grep -Ev '^[[:space:]]*(#|$)' "$paths_file" |
+    git -C "$CORELLIA_ROOT" sparse-checkout set --stdin
+}
+
 # --- enterprise-managed software -------------------------------------------
 
 # Software in Brewfile.managed is installed by an employer's IT department on a

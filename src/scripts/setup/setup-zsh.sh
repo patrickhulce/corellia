@@ -15,7 +15,13 @@
 set -euo pipefail
 
 CORELLIA_REPO="https://github.com/patrickhulce/corellia.git"
-CORELLIA_DIR="$HOME/Code/OpenSource/corellia"
+# A dedicated setup checkout, deliberately not ~/Code/OpenSource/corellia: this
+# one is sparse and shallow, and it has to stay on disk forever because ~/.zshrc
+# sources its shell config and ~/.config symlinks point into it. That leaves the
+# usual Code path free for a full clone when you want to work on the monorepo.
+CORELLIA_DIR="$HOME/.corellia"
+# Repo-relative, because it's read with `git show` before a working tree exists.
+SPARSE_PATHS_FILE="src/scripts/setup/sparse-paths"
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 step() { printf '\033[1;32m  +\033[0m %s\n' "$*"; }
@@ -153,11 +159,37 @@ clone_corellia() {
     return
   fi
 
+  # Shallow, blobless, and sparse. The monorepo is over 10G of side projects and
+  # local scratch data; setup needs well under a megabyte of it.
+  #
   # HTTPS on purpose: SSH keys don't exist yet. setup-macos.sh switches the
   # remote to SSH once identity is configured.
   step "Cloning corellia to $CORELLIA_DIR"
   mkdir -p "$(dirname "$CORELLIA_DIR")"
-  git clone "$CORELLIA_REPO" "$CORELLIA_DIR"
+  git clone --depth=1 --filter=blob:none --sparse "$CORELLIA_REPO" "$CORELLIA_DIR"
+  apply_sparse_paths
+}
+
+# Read from the object store rather than the working tree, because at this point
+# there isn't one to speak of: --sparse checks out root-level files and nothing
+# else, so src/ doesn't exist on disk yet. `git show` doesn't care — it resolves the
+# path against the commit, and on a blobless clone fetches that one blob on demand.
+#
+# This is the whole reason the list can live next to the setup scripts instead of
+# cluttering the repo root.
+apply_sparse_paths() {
+  local paths
+
+  if ! paths="$(git -C "$CORELLIA_DIR" show "HEAD:$SPARSE_PATHS_FILE" 2>/dev/null)"; then
+    warn "could not read $SPARSE_PATHS_FILE; checking out the whole repo instead"
+    git -C "$CORELLIA_DIR" sparse-checkout disable
+    return
+  fi
+
+  step "Limiting the checkout to the setup directories"
+  printf '%s\n' "$paths" |
+    grep -Ev '^[[:space:]]*(#|$)' |
+    git -C "$CORELLIA_DIR" sparse-checkout set --stdin
 }
 
 main() {
@@ -185,10 +217,15 @@ Phase 1 complete.
 Next, open Ghostty (so the rest runs in the terminal you'll actually use) and:
 
   cd $CORELLIA_DIR
-  ./src/scripts/setup/bootstrap.sh
+  ./src/scripts/setup/bootstrap.sh --name <this-machine>
 
 Add --skip-managed if this is a work machine and IT installs Cursor, Adobe,
 Slack, and friends for you. See src/docs/setup/mac-setup.md for the details.
+
+The checkout above is shallow and sparse, holding only src/conf, src/docs/setup,
+and the scripts. To work on the rest of the monorepo, clone it properly:
+
+  git clone git@github.com:patrickhulce/corellia.git ~/Code/OpenSource/corellia
 EOF
 }
 
