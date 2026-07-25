@@ -107,29 +107,60 @@ configure_screenshots() {
   defaults write com.apple.screencapture location "$HOME/Pictures/Screenshots"
 }
 
-# Free up Cmd+Space for Raycast by disabling the two Spotlight hotkeys.
-# 64 is the Spotlight search field, 65 the Finder search window.
-disable_spotlight_hotkeys() {
-  step "Disabling the Spotlight keyboard shortcuts"
+# disable_symbolic_hotkey <id> <ascii> <keycode> <modifiers>
+#
+# Turns off one of the shortcuts macOS reserves in com.apple.symbolichotkeys. The
+# parameters are the shortcut's own default, written back alongside enabled=false
+# so re-enabling it in System Settings restores the right combination instead of
+# whatever we happened to leave behind.
+#
+# <ascii> is 65535 for keys with no character, <keycode> is the virtual key code,
+# and <modifiers> is an additive Cocoa mask: shift 131072, control 262144,
+# option 524288, command 1048576, fn 8388608.
+disable_symbolic_hotkey() {
+  local id="$1"
+  local ascii="$2"
+  local keycode="$3"
+  local modifiers="$4"
 
-  local key
-  for key in 64 65; do
-    defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$key" "
+  defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$id" "
+    <dict>
+      <key>enabled</key><false/>
+      <key>value</key>
       <dict>
-        <key>enabled</key><false/>
-        <key>value</key>
-        <dict>
-          <key>type</key><string>standard</string>
-          <key>parameters</key>
-          <array>
-            <integer>32</integer>
-            <integer>49</integer>
-            <integer>1048576</integer>
-          </array>
-        </dict>
+        <key>type</key><string>standard</string>
+        <key>parameters</key>
+        <array>
+          <integer>$ascii</integer>
+          <integer>$keycode</integer>
+          <integer>$modifiers</integer>
+        </array>
       </dict>
-    "
-  done
+    </dict>
+  "
+}
+
+# Cmd+Space goes to Raycast, and Cmd+F5 to superwhisper. Both are taken by macOS
+# out of the box.
+#
+# The VoiceOver and Accessibility masks carry the fn bit (8388608) on top of the
+# values every reference table lists, because macOS records fn as part of a
+# function-key shortcut on a keyboard where F5 is a media key. Dictation's does
+# not — these are the defaults macOS actually ships, read back from
+# com.apple.symbolichotkeys rather than derived, so don't "fix" the odd one out.
+disable_reserved_hotkeys() {
+  step "Freeing Cmd+Space for Raycast"
+  disable_symbolic_hotkey 64 32 49 1048576 # Spotlight search
+  disable_symbolic_hotkey 65 32 49 1572864 # Finder search window, Opt+Cmd+Space
+
+  step "Freeing Cmd+F5 for dictation"
+  disable_symbolic_hotkey 59 65535 96 9437184  # Turn VoiceOver on or off
+  disable_symbolic_hotkey 162 65535 96 9961472 # Accessibility Shortcuts panel
+
+  # Apple's own dictation, on Ctrl+Opt+Cmd+F5. Only the shortcut goes: leaving
+  # AppleDictationAutoEnable alone keeps Dictation reachable from the Edit menu,
+  # so nothing is lost if superwhisper is ever uninstalled.
+  disable_symbolic_hotkey 164 65535 96 1835008
 
   # Ask the settings daemon to reload rather than waiting for a logout.
   /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u \
@@ -155,7 +186,7 @@ main() {
   configure_dock
   configure_windows
   configure_screenshots
-  disable_spotlight_hotkeys
+  disable_reserved_hotkeys
 
   log "Applying"
   restart_affected_apps
