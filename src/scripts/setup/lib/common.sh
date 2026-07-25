@@ -109,8 +109,12 @@ ensure_sparse_paths() {
 CORELLIA_SKIP_MANAGED="${CORELLIA_SKIP_MANAGED:-}"
 
 is_managed_machine() {
-  # Work dotfiles checked out means this is a work machine.
+  # Work dotfiles checked out means this is a work machine. Both locations are
+  # checked because employers put them in different places, and a probe for only
+  # one of them fails open: it reports a work machine as personal and installs
+  # software IT already owns.
   [ -d "$HOME/.config/work" ] && return 0
+  [ -d "$HOME/Library/Application Support/work/dotfiles" ] && return 0
 
   # MDM enrollment (Jamf, Kandji, Intune, ...) is the strongest signal.
   if have profiles; then
@@ -166,7 +170,7 @@ managed_flags_help() {
   cat <<'EOF'
   --skip-managed      Don't install software an employer's IT owns (Cursor,
                       Adobe, Slack, ...). Detected automatically on a machine
-                      with MDM enrollment or ~/.config/work.
+                      with MDM enrollment or work dotfiles checked out.
   --include-managed   Install it anyway, overriding that detection.
 
 The CORELLIA_SKIP_MANAGED environment variable works the same as --skip-managed.
