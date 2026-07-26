@@ -3,13 +3,19 @@
 # Replaces src/conf/iterm2.plist. Same settings the iTerm2 profile carried, in a
 # format that can actually be reviewed in a diff.
 
-# Installed by the font-jetbrains-mono-nerd-font cask in src/conf/Brewfile. The
+# Installed by the font-fira-code-nerd-font cask in src/conf/Brewfile. The
 # Nerd Font build matters: starship's prompt and eza's icons draw glyphs that
-# plain JetBrains Mono (and the old Monaco) doesn't carry.
-font-family = JetBrainsMono Nerd Font
-font-size = 18
+# plain Fira Code (and the old Monaco) doesn't carry.
+font-family = FiraCode Nerd Font
+font-size = 20
 
-background-opacity = 0.8
+# IBM Carbon's palette, on a #161616 background. Ships with Ghostty; the file is
+# in Ghostty.app/Contents/Resources/ghostty/themes if you want to read it.
+theme = Carbonfox
+
+# High enough that the desktop behind the window doesn't wash the background out
+# of Carbonfox territory, low enough to still see what's back there.
+background-opacity = 0.85
 
 # Bytes, not lines. Roughly equivalent to the old 10,000-line scrollback.
 scrollback-limit = 10000000
@@ -22,3 +28,19 @@ macos-option-as-alt = true
 
 keybind = cmd+backslash=new_split:right
 keybind = cmd+shift+backslash=new_split:down
+
+# Hand the shifted motions to the shell; src/conf/zsh/25-keybindings.zsh makes
+# them ordinary cursor movement.
+#
+# Ghostty binds all six to adjust_selection, which only extends a selection made
+# with the mouse and does nothing when there isn't one — the key then falls
+# through half-encoded and zsh inserts the trailing letter, which is where the
+# stray D and C came from. `unbind` rather than an explicit `csi:1;2D` so Ghostty
+# keeps choosing the encoding, since programs speaking the kitty keyboard
+# protocol expect a different form.
+keybind = shift+left=unbind
+keybind = shift+right=unbind
+keybind = shift+up=unbind
+keybind = shift+down=unbind
+keybind = shift+home=unbind
+keybind = shift+end=unbind

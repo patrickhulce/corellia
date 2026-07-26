@@ -49,6 +49,13 @@ brew "zoxide"
 brew "starship"
 brew "zsh-autosuggestions"
 
+# A bash from this decade, for scripts that assume associative arrays, mapfile,
+# or ${var,,}. macOS ships 3.2.57 from 2007 and this does not replace it, so
+# only an `env bash` shebang picks it up — which means the setup scripts must
+# not depend on it. They run under /bin/bash on a fresh machine, before this is
+# installed. See src/docs/setup/mac-setup.md#shell-compatibility.
+brew "bash"
+
 # Shell script linting, mirrors .github/workflows/lint.yml
 brew "shellcheck"
 brew "shfmt"
@@ -88,7 +95,7 @@ cask "rectangle"
 
 # Fonts. starship's prompt and eza's icons need Nerd Font glyphs, and
 # src/conf/ghostty/config asks for this family by name.
-cask "font-jetbrains-mono-nerd-font"
+cask "font-fira-code-nerd-font"
 
 # Display fonts, cask-installable because they're on Google Fonts. The rest of
 # the personal set has no cask and is downloaded by install_fonts() in
@@ -116,12 +123,11 @@ cask "superwhisper"
 cask "1password"
 cask "1password-cli"
 cask "discord"
-cask "jordanbaird-ice" # menu bar manager
 cask "ngrok"
 cask "rescuetime"
 cask "scroll-reverser" # independent scroll direction for mouse and trackpad
 cask "spotify"
-cask "tailscale-app"
+cask "thaw@beta"
 
 # Media and creative
 cask "audacity"

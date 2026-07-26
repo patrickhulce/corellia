@@ -9,6 +9,8 @@ Sourced in filename order by the `corellia` loader block in `~/.zshrc`, which
 | `05-oh-my-zsh.zsh` | oh-my-zsh, with no theme and two plugins |
 | `10-path.zsh` | `PATH` additions |
 | `20-tools.zsh` | Shell integrations: direnv, mise, zoxide, fzf, starship |
+| `22-python-venv.zsh` | Auto-activate `.venv` on cd; exports for starship's python segment |
+| `25-keybindings.zsh` | Key bindings, after the plugins whose widgets they use |
 | `30-aliases.zsh` | Aliases |
 
 ## Keep it valid in bash
@@ -41,6 +43,12 @@ To check a change, source the files in both shells and confirm neither complains
 zsh  -c 'for f in src/conf/zsh/*.zsh; do . "$f"; done && echo zsh ok'
 bash -c 'for f in src/conf/zsh/*.zsh; do . "$f"; done && echo bash ok'
 ```
+
+CI parses every file here with both `zsh -n` and `/bin/bash -n`, the latter
+being macOS's bash 3.2. The scripts that write and read this configuration are
+held to the same version; see
+[mac-setup.md](../../docs/setup/mac-setup.md#shell-compatibility) for what 3.2
+won't take.
 
 ## Local overrides
 

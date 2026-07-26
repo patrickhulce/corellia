@@ -5,12 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  SHFMT_VERSION: v3.13.1
+
 jobs:
   shell:
     name: shell scripts
     runs-on: ubuntu-latest
-    env:
-      SHFMT_VERSION: v3.13.1
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +26,7 @@ jobs:
       # get the same rewrite the macOS scripts did. See src/docs/setup/mac-setup.md.
       - name: Collect shell scripts
         run: |
-          shfmt -f src/scripts/setup src/scripts/global \
+          shfmt -f src/scripts/setup src/scripts/global src/conf/starship \
             | grep -vE 'setup-(linux|wsl|ffmpeg)\.sh$' \
             | tee scripts.txt
           test -s scripts.txt
@@ -35,3 +36,47 @@ jobs:
 
       - name: shfmt
         run: xargs shfmt -d -i 2 -ci <scripts.txt
+
+  # The job above runs everything under bash 5, where this repo's own setup
+  # scripts are never run for the first time. A fresh Mac has bash 3.2.57 at
+  # /bin/bash and nothing newer — the Brewfile's bash is installed by the very
+  # script in question, and setup-zsh.sh runs over curl before Homebrew exists
+  # at all — and 3.2 rejects constructs bash 5 accepts. Those are parse errors,
+  # so they take the whole script down before its first line of output.
+  bash32:
+    name: bash 3.2 and zsh
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shfmt
+        run: |
+          case "$(uname -m)" in
+            arm64) arch=arm64 ;;
+            *) arch=amd64 ;;
+          esac
+          curl -fsSL -o /tmp/shfmt \
+            "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_darwin_${arch}"
+          chmod +x /tmp/shfmt
+          sudo mv /tmp/shfmt /usr/local/bin/shfmt
+
+      - name: Collect shell scripts
+        run: |
+          shfmt -f src/scripts/setup src/scripts/global src/conf/starship \
+            | grep -vE 'setup-(linux|wsl|ffmpeg)\.sh$' \
+            | tee scripts.txt
+          test -s scripts.txt
+
+      - name: Parse with the system bash
+        run: |
+          /bin/bash --version | head -1
+          xargs -n1 /bin/bash -n <scripts.txt
+
+      # src/conf/zsh is sourced by zsh but promises to stay valid in bash; see
+      # src/conf/zsh/README.md.
+      - name: Parse the shell config in both shells
+        run: |
+          for f in src/conf/zsh/*.zsh; do
+            /bin/bash -n "$f"
+            zsh -n "$f"
+          done

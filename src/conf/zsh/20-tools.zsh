@@ -33,8 +33,12 @@ fi
 
 # Prompt, in place of an oh-my-zsh theme. 05-oh-my-zsh.zsh leaves ZSH_THEME
 # empty so nothing is drawn twice.
-if command -v starship >/dev/null 2>&1; then
-  eval "$(starship init "$_corellia_shell")"
+#
+# The prompt lives in src/conf/starship rather than here, because it's the one
+# piece of this configuration worth having on a work machine or a box you only
+# ever reach over ssh. See src/scripts/setup/setup-starship.sh.
+if [ -r "${CORELLIA_HOME:-}/src/conf/starship/init.sh" ]; then
+  . "$CORELLIA_HOME/src/conf/starship/init.sh"
 fi
 
 # Last, so it can wrap the widgets everything above bound — in particular
@@ -44,6 +48,9 @@ fi
 # zsh only. The nearest bash equivalent, ble.sh, isn't worth its startup cost.
 if [ -n "${ZSH_VERSION:-}" ] && [ -n "${HOMEBREW_PREFIX:-}" ] &&
   [ -r "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+  # fg=8 is nearly invisible on Carbonfox; fg=244 without bold — bold inherits from
+  # starship's character module and reads as solid white until zle redraws.
+  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=244'
   . "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
 fi
 

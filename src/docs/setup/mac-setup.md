@@ -86,6 +86,42 @@ and safe to re-run, so use them directly when you only need one.
 | `setup-app-prefs.sh`      | Per-app preferences from `src/conf/defaults`, or `--export` to capture them           |
 | `setup-languages.sh`      | Node via mise, Rust via rustup, Python tooling via uv, skillz agent skills            |
 
+### Shell compatibility
+
+**The setup scripts have to parse and run under bash 3.2.** That is what
+`/bin/bash` is on macOS, it is the only bash a new machine has, and both entry
+points are stuck with it: `setup-zsh.sh` runs through `bash -c "$(curl ...)"`
+before Homebrew exists, and `setup-macos.sh` is the script that installs
+everything else. A modern bash is in `src/conf/Brewfile` for other work, but by
+the time it lands these scripts have already run.
+
+The trap is that a 3.2 incompatibility is usually a *parse* error, so the script
+dies before its first line of output rather than failing at the line at fault.
+The one that got us:
+
+```sh
+# bash 3.2 scans this heredoc for quote characters instead of taking it
+# literally, so the apostrophe swallows the rest of the file:
+block="$(
+  cat <<EOF
+# ... zsh's ...
+EOF
+)"
+```
+
+Put the heredoc in its own function and call that in the command substitution
+instead. More generally, avoid heredocs inside `$( )`, `declare -A`, `mapfile`,
+`${var^^}`, and negative array indices.
+
+The `bash 3.2 and zsh` job in [lint.yml](../../../.github/workflows/lint.yml)
+runs `/bin/bash -n` over every script on a macOS runner, because the Linux job
+only ever sees bash 5 and cannot catch this. Locally, `bash` is whichever one is
+first on `PATH`, so check with the absolute path:
+
+```sh
+/bin/bash -n src/scripts/setup/*.sh
+```
+
 ### What lives where
 
 Configuration is version controlled in this repo and linked into place, rather
@@ -96,6 +132,7 @@ in `$HOME`.
 - `src/conf/zsh/*.zsh` — shell config, sourced by one loader block in `~/.zshrc`
 - `src/conf/direnv/direnv.toml` — direnv
 - `src/conf/ghostty/config` — terminal
+- `src/conf/starship/` — the prompt, and the init script that loads it
 - `src/conf/gitignore` — global gitignore, registered as `core.excludesfile`
 - `src/conf/DefaultKeyBinding.dict` — the Home/End fix
 - `src/conf/defaults/*.plist` — per-app preferences, applied by `setup-app-prefs.sh`
@@ -112,6 +149,16 @@ oh-my-zsh is part of that, and stays small: `src/conf/zsh/05-oh-my-zsh.zsh` sour
 it with no theme (starship draws the prompt) and two plugins. `~/.zshrc` holds only
 the loader, so oh-my-zsh's template — with its own theme and plugin list — never
 gets written.
+
+The prompt is kept separable, as the one piece worth having on a work laptop or
+an ssh-only box: `src/conf/starship` holds `starship.toml` and an `init.sh` that
+any dotfiles can source, and `20-tools.zsh` sources it out of the checkout.
+Elsewhere, `setup-starship.sh` installs both to `~/.config/starship` with no
+checkout and no dependency on this repo:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/patrickhulce/corellia/main/src/scripts/setup/setup-starship.sh)"
+```
 
 The shell config, loader block included, is kept **valid in bash as well as zsh** —
 POSIX `.` rather than `source`, no glob qualifiers, and the genuinely zsh-only
@@ -151,11 +198,15 @@ Two details worth knowing, both learned the hard way:
   that is mid-quit can still flush over a write that has already landed.
 
 Only four domains are tracked, and the bar for adding a fifth is that the app is
-configured far enough from its defaults to be worth carrying. Ice and Amphetamine
-don't clear it — both are installed by the Brewfile and both start fresh on each
-machine. The tracked domains, the ones with only some keys captured, and the keys
-excluded everywhere are all listed at the top of the script with the reasoning
-attached.
+configured far enough from its defaults to be worth carrying. Amphetamine doesn't
+clear it: the Brewfile installs it and it starts fresh on each machine. Thaw, the
+menu bar manager that replaced the archived Ice, is the open case — it is
+configured by hand here, but its domain mixes real settings with per-machine
+state (`KnownDisplays`, the `MenuBarItemManager.*` keys, and an
+`NSStatusItem VisibleCC *` variant the excludes don't cover), so capturing it
+would need a key allowlist the way superwhisper's does. The tracked domains, the
+ones with only some keys captured, and the keys excluded everywhere are all
+listed at the top of the script with the reasoning attached.
 
 ## Manual Configurations
 
@@ -163,6 +214,29 @@ What macOS won't let a script do. `setup-macos-defaults.sh` already covers the
 battery percentage, tap to click, bottom-right secondary click, hiding the Dock,
 keeping windows when quitting, the screenshot location, and freeing both Cmd+Space
 and Cmd+F5.
+
+### Open every app once
+
+**Budget an hour of clicking after the scripts finish.** Homebrew quarantines
+what it downloads, exactly as Safari would, so the first launch of each cask
+stops on *"Thaw is an app downloaded from the Internet. Are you sure you want to
+open it?"*. Nothing in this repo can answer that for you, and until it is
+answered the app has not run even once.
+
+That matters more than the dialog itself, because a first launch is also when an
+app asks for the permissions it needs and registers its login item. Rectangle
+and Thaw want Accessibility, superwhisper wants the Microphone, Raycast wants
+several, and none of those prompts appear until you open the app. A machine
+where `brew bundle` reported everything installed can still have an empty menu
+bar and no working window shortcuts.
+
+So: open every cask the Brewfile installs, once, by hand. The ones that need it
+most are Rectangle, Thaw, Raycast, and superwhisper, since their whole job is to
+be running in the background.
+
+Homebrew's `--no-quarantine` would skip the dialog. It is deliberately not used
+here: it turns off that check for everything installed, which is a poor trade
+for a prompt answered once per app per machine.
 
 1. Change the default web browser (System Settings > Desktop & Dock)
 1. Configure Dock icons
@@ -267,7 +341,7 @@ SDKs tied to an account, so all of those belong in a project venv reached with
 Starjedi, BonheurRoyale, BrunoAce, and Handodle. All of them provision themselves
 now, in two ways, and none is committed to this repo: BonheurRoyale and BrunoAce
 are on Google Fonts, so they're casks in the Brewfile alongside
-`font-jetbrains-mono-nerd-font`, while Aurebesh, Star Jedi, and Handodle have no
+`font-fira-code-nerd-font`, while Aurebesh, Star Jedi, and Handodle have no
 cask and are downloaded from dafont by `install_fonts()` in `setup-macos.sh`.
 
 Downloaded rather than committed because none of the three is redistributable —
@@ -280,11 +354,16 @@ Handodle zips bundle a licence file and a PDF.
 ### Work-managed, out of scope
 
 Installed by IT and not this repo's business. `Brewfile.managed` covers the ones
-with casks — Cursor, Creative Cloud, Slack, Zoom, Docker Desktop, Chrome — and the
-rest arrive as portal installs and MDM payloads: Okta Verify, Ivanti Secure Access,
-CrowdStrike Falcon, IBM Aspera (Connect, Crypt, Launcher), Managed Software Center,
-PCoIPClient, DEPNotify, Nudge, Netflix Notifier, the licensed Netflix Sans fonts,
-the `nflx-*` pipx packages, and the `netflix.*` editor extensions.
+with casks — Cursor, Creative Cloud, Slack, Zoom, Docker Desktop, Chrome, and
+Tailscale — and the rest arrive as portal installs and MDM payloads: Okta Verify,
+Ivanti Secure Access, CrowdStrike Falcon, IBM Aspera (Connect, Crypt, Launcher),
+Managed Software Center, PCoIPClient, DEPNotify, Nudge, Netflix Notifier, the
+licensed Netflix Sans fonts, the `nflx-*` pipx packages, and the `netflix.*`
+editor extensions.
+
+Tailscale is the newest arrival there. A VPN client on a work machine is IT's to
+enroll and configure, and a second copy of the same one competes for the network
+extension slot.
 
 `~/.gitconfig` also opens with a Metatron autoconfig block that the `metatron` CLI
 rewrites. That's why `setup-macos.sh` sets individual keys with
@@ -426,8 +505,10 @@ For anyone wondering where a familiar tool went:
 - Spectacle → Rectangle, whose shortcuts are a plist this repo can version.
   Raycast is the launcher, not the window manager: its hotkeys live in an
   encrypted SQLite store that can't be exported to anything reviewable.
+- Ice → Thaw, the maintained fork, after Ice was archived. Same app, same
+  preference keys, different bundle identifier
 - iTerm2 and its binary `.plist` → Ghostty and a text config
-- Monaco → JetBrainsMono Nerd Font, because starship's prompt draws glyphs Monaco
+- Monaco → FiraCode Nerd Font, because starship's prompt draws glyphs Monaco
   doesn't carry
 - Long `brew install` lines → `Brewfile` and `brew bundle`
 - Always-on mysql, postgresql, and redis services → per-project containers, or

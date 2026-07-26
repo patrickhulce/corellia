@@ -1,0 +1,55 @@
+# starship prompt. Loaded by init.sh next to this file.
+#
+# Overrides a few things in starship's defaults rather than describing a whole
+# prompt. The glyphs are Nerd Font ones and need a patched font to render.
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = "$hostname$directory$git_branch$git_status$python${env_var.CORELLIA_PY_GLOBAL}$line_break$character[ ](white)"
+
+# A laptop glyph on this machine, a server glyph plus the hostname anywhere else.
+# Done with aliases rather than a [custom] module, which would fork a shell on
+# every prompt: off ssh the symbol is empty, so the alias is the whole output.
+[hostname]
+ssh_only = false
+ssh_symbol = "󰒋 "
+format = "[$ssh_symbol$hostname]($style)"
+style = "bold blue"
+
+[hostname.aliases]
+"MacBook-NFLXPH" = "󰌢"
+
+# The `on ☁️` that used to follow every prompt. It renders whenever
+# ~/.config/gcloud exists — permanently, after one `gcloud auth login` — with no
+# bearing on whether the directory has anything to do with GCP.
+[gcloud]
+disabled = true
+
+[package]
+disabled = true
+
+[directory]
+format = "  [$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+format = "[-](dimmed) [$symbol$branch(:$remote_branch)]($style) "
+
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style)) '
+
+# Active venv — starship reads $VIRTUAL_ENV via $virtualenv. Format omits $version.
+[python]
+python_binary = []
+detect_extensions = []
+detect_files = []
+detect_folders = []
+symbol = "\ue73c "
+format = "[-](dimmed) [$symbol$virtualenv]($style) "
+style = "bold green"
+
+# Global python, only in a pyproject.toml project; gated in 22-python-venv.zsh.
+[env_var.CORELLIA_PY_GLOBAL]
+variable = "CORELLIA_PY_GLOBAL"
+symbol = "\ue73c "
+format = "[-](dimmed) [$symbol$env_value]($style) "
+style = "white dimmed"

@@ -72,7 +72,10 @@ main() {
   log "Phase 5: languages and tooling"
   bash "$CORELLIA_SETUP_DIR/setup-languages.sh"
 
-  log "Done. Open a new shell, then see src/docs/setup/mac-setup.md for the manual steps."
+  log "Done. Open a new shell for the tooling to load."
+  note "Then open each app once by hand: they are quarantined until you do, and"
+  note "none of them can ask for Accessibility or Microphone before first launch."
+  note "The rest of the manual steps are in src/docs/setup/mac-setup.md."
 }
 
 main "$@"

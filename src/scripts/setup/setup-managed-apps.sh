@@ -53,7 +53,7 @@ main() {
   have brew || die "Homebrew is missing; run setup-zsh.sh first"
 
   log "Installing enterprise-managed software"
-  brew bundle install --file "$BREWFILE" --no-upgrade
+  brew_bundle "$BREWFILE"
 }
 
 main "$@"

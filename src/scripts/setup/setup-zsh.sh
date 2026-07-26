@@ -27,6 +27,7 @@ log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 step() { printf '\033[1;32m  +\033[0m %s\n' "$*"; }
 skip() { printf '    %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
+note() { printf '\033[2m    %s\033[0m\n' "$*"; }
 
 die() {
   printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
@@ -44,7 +45,7 @@ install_xcode_tools() {
 
   # The installer is a separate GUI process, so poll rather than assuming the
   # command above blocked.
-  echo "    Complete the installer dialog; waiting for it to finish..."
+  note "Complete the installer dialog; waiting for it to finish..."
   until xcode-select -p >/dev/null 2>&1; do
     sleep 10
   done
@@ -63,6 +64,7 @@ install_rosetta() {
   fi
 
   step "Installing Rosetta"
+  note "A download from Apple, quiet for a minute or two."
   softwareupdate --install-rosetta --agree-to-license
 }
 
@@ -96,6 +98,7 @@ install_homebrew() {
     skip "Homebrew already installed"
   else
     step "Installing Homebrew"
+    note "It asks for your password, then downloads for several minutes."
     NONINTERACTIVE=1 /bin/bash -c \
       "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
@@ -142,15 +145,27 @@ install_oh_my_zsh() {
 
 # `brew install` on an already-present cask exits non-zero ("there is already an
 # App at ..."), which would abort a re-run, so check first.
+#
+# One line per package rather than one for the lot, and no --quiet: the first
+# install on a machine is also the first catalog download, and a single "==>
+# Downloading" with nothing after it is the point where this looks stuck.
 install_terminal() {
-  step "Installing git, gh, and Ghostty"
-
   local formula
   for formula in git gh; do
-    brew list --formula "$formula" >/dev/null 2>&1 || brew install --quiet --formula "$formula"
+    if brew list --formula "$formula" >/dev/null 2>&1; then
+      skip "$formula already installed"
+    else
+      step "Installing $formula"
+      brew install --formula "$formula"
+    fi
   done
 
-  brew list --cask ghostty >/dev/null 2>&1 || brew install --quiet --cask ghostty
+  if brew list --cask ghostty >/dev/null 2>&1; then
+    skip "ghostty already installed"
+  else
+    step "Installing Ghostty"
+    brew install --cask ghostty
+  fi
 }
 
 clone_corellia() {

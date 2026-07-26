@@ -52,15 +52,23 @@ install_node() {
   have mise || die "mise is missing; run setup-macos.sh first"
 
   step "Installing Node $NODE_VERSION"
+  note "mise downloads and unpacks a Node build; quiet for a minute."
   mise use --global "node@$NODE_VERSION"
   skip "node $(mise exec -- node --version)"
 }
 
 install_npm_globals() {
   step "Installing global npm packages"
+
+  # npm reports each package only once it has resolved the whole tree, so the
+  # list of what is coming has to come from here.
+  local pkg
+  for pkg in $NPM_GLOBALS; do note "$pkg"; done
+
   # Run through mise so this works in a shell that hasn't activated it yet.
+  # Not --silent: this is minutes of network with nothing else on screen.
   # shellcheck disable=SC2086 # NPM_GLOBALS is a deliberate word-split list
-  mise exec -- npm install --global --silent $NPM_GLOBALS
+  mise exec -- npm install --global --no-fund --no-audit $NPM_GLOBALS
 }
 
 # Rust gets rustup rather than mise, even though mise owns node and java here:
@@ -73,6 +81,7 @@ install_rust() {
   # separate installer step. `rustup default` installs the toolchain when it is
   # missing and is a no-op afterwards.
   step "Installing the stable Rust toolchain"
+  note "Several hundred megabytes on a fresh machine."
   rustup default stable
 
   step "Adding components: $RUST_COMPONENTS"
@@ -87,9 +96,9 @@ install_rust() {
 install_python_tools() {
   have uv || die "uv is missing; run setup-macos.sh first"
 
-  step "Installing Python tools with uv"
   local tool
   for tool in $UV_TOOLS; do
+    step "Installing $tool"
     uv tool install --quiet "$tool"
   done
 

@@ -31,10 +31,15 @@ MODE="apply"
 # updater state, licence status, recorder window coordinates, and the microphone
 # this particular machine happens to have.
 #
-# Ice and Amphetamine are deliberately absent. Both are installed by the
-# Brewfile, but neither is configured far enough from its defaults to be worth
-# versioning, and both write enough per-launch state that a captured copy is
-# mostly churn. They start fresh on each machine.
+# Amphetamine is deliberately absent: installed by the Brewfile, but not
+# configured far enough from its defaults to be worth versioning, and it starts
+# fresh on each machine at no cost.
+#
+# Thaw, the menu bar manager, is absent for a narrower reason. It is configured,
+# but its domain carries KnownDisplays and the MenuBarItemManager.* keys, which
+# describe the monitors and menu bar items of one particular machine, so a
+# whole-domain capture would be mostly churn. Tracking it means a key list like
+# superwhisper's below.
 PREF_DOMAINS=(
   "com.knollsoft.Rectangle"
   "com.pilotmoon.scroll-reverser"

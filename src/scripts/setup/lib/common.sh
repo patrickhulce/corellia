@@ -16,6 +16,13 @@ step() { printf '\033[1;32m  +\033[0m %s\n' "$*"; }
 skip() { printf '    %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 
+# What the next command is about to do to your patience: a download with no
+# progress of its own, a step that sits silent for minutes, a prompt you have to
+# answer. Setup runs for the better part of an hour and most of that is spent
+# watching output that has stopped, so the difference between "slow" and "stuck"
+# has to be on screen before the silence starts, not after it ends.
+note() { printf '\033[2m    %s\033[0m\n' "$*"; }
+
 die() {
   printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
   exit 1
@@ -99,6 +106,25 @@ ensure_sparse_paths() {
   step "Reapplying the sparse checkout paths"
   grep -Ev '^[[:space:]]*(#|$)' "$paths_file" |
     git -C "$CORELLIA_ROOT" sparse-checkout set --stdin
+}
+
+# --- homebrew ---------------------------------------------------------------
+
+# brew_bundle <brewfile>
+#
+# brew bundle refreshes Homebrew's catalog before it installs anything, and that
+# refresh is minutes of silence following the last line it printed — the point
+# where this looks hung on a fresh machine. `check` gets that wait over with
+# while printing the list of what is about to be installed, so the run has both
+# a warning and an end in sight before it starts.
+brew_bundle() {
+  local file="$1"
+
+  note "Homebrew refreshes its catalog first. Expect a few minutes of silence."
+  # Non-zero only means something is missing, which is the whole point of asking.
+  brew bundle check --verbose --no-upgrade --file "$file" || true
+
+  brew bundle install --verbose --no-upgrade --file "$file"
 }
 
 # --- enterprise-managed software -------------------------------------------

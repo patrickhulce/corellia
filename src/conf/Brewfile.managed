@@ -25,3 +25,7 @@ cask "docker-desktop" # renamed from docker
 # Browsers
 cask "google-chrome"
 
+# Networking. A VPN on a work machine is IT's to configure and enroll, and a
+# personal install of the same client fights with the managed one over the
+# network extension.
+cask "tailscale-app"
