@@ -94,8 +94,11 @@ if [ -n "${ZSH_VERSION:-}" ]; then
       fi
       if (( $#POSTDISPLAY && CURSOR == max_cursor )); then
         zle autosuggest-accept
-        # POSTDISPLAY was drawn gray; redraw so accepted text uses normal input styling.
+        # POSTDISPLAY was drawn gray; strip stale region_highlight so accepted
+        # text does not keep suggestion styling (fg=245 reads as white in tmux).
         _zsh_autosuggest_highlight_reset
+        region_highlight=()
+        typeset -g _corellia_autosuggest_suppress=1
         zle -R
       else
         zle expand-or-complete

@@ -68,6 +68,18 @@ if [ -n "${ZSH_VERSION:-}" ]; then
       _corellia_autosuggest_pre_redraw() {
         emulate -L zsh
         _zsh_autosuggest_highlight_reset
+        # Tab-accept (25-keybindings.zsh) sets this so backspace can edit the
+        # merged line without immediately re-suggesting the deleted suffix. In
+        # tmux over SSH, fg=245 often renders as white and looks like the char
+        # was not deleted.
+        if (( ${+_corellia_autosuggest_suppress} )); then
+          POSTDISPLAY=
+          if [[ -n $KEYS && $KEYS == [[:print:]] ]]; then
+            unset _corellia_autosuggest_suppress
+          else
+            return 0
+          fi
+        fi
         _zsh_autosuggest_highlight_apply
       }
       add-zle-hook-widget zle-line-pre-redraw _corellia_autosuggest_pre_redraw
