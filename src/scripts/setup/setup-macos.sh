@@ -259,6 +259,71 @@ setup_code_directories() {
   clone_repo git@github.com:patrickhulce/skillz.git "$HOME/Code/OpenSource/skillz"
 }
 
+# --- fonts ------------------------------------------------------------------
+
+FONT_DIR="$HOME/Library/Fonts"
+DAFONT_URL="https://dl.dafont.com/dl/?f="
+
+# The personal fonts with no Homebrew cask. BonheurRoyale and BrunoAce are on
+# Google Fonts and come from src/conf/Brewfile instead; these three are fetched
+# at setup time rather than committed, since none of them is redistributable.
+#
+# Columns: name, dafont slug, zip members to install, glob meaning "already here".
+#
+# The member pattern is the part that earns its keep. dafont's Star Jedi archive
+# carries eight faces across four directories and only the base one is wanted,
+# and the Aurebesh and Handodle archives bundle a licence file and a PDF next to
+# the fonts.
+FONTS="\
+Aurebesh|aurebesh|*.otf|Aurebesh.otf
+Star Jedi|star_jedi|*Starjedi.ttf|Starjedi.ttf
+Handodle|handodle|*.ttf|Handodle*.ttf"
+
+install_fonts() {
+  mkdir -p "$FONT_DIR"
+
+  local name slug members probe
+  while IFS='|' read -r name slug members probe; do
+    [ -n "$name" ] || continue
+
+    if compgen -G "$FONT_DIR/$probe" >/dev/null; then
+      skip "$name already installed"
+      continue
+    fi
+
+    install_font "$name" "$slug" "$members"
+  done <<EOF
+$FONTS
+EOF
+}
+
+# Split out so the temp directory is removed on every path out, a failed
+# download included. A font that can't be fetched warns rather than aborting:
+# dafont is a third party, and a dead link there shouldn't stop the setup.
+install_font() {
+  local name="$1"
+  local slug="$2"
+  local members="$3"
+
+  local tmp
+  tmp="$(mktemp -d)"
+
+  if ! curl -fsSL --max-time 60 -o "$tmp/font.zip" "$DAFONT_URL$slug"; then
+    warn "could not download $name from dafont; install it by hand"
+  elif ! unzip -qql "$tmp/font.zip" >/dev/null 2>&1; then
+    # A slug dafont doesn't know answers with an HTML page and a 200, so a
+    # renamed font arrives as a successful download of something that is not an
+    # archive. Checked separately, or it would be reported as an empty archive.
+    warn "$DAFONT_URL$slug did not return a zip; check the font's page on dafont"
+  elif ! unzip -joq "$tmp/font.zip" "$members" -d "$FONT_DIR" >/dev/null 2>&1; then
+    warn "no files matching $members in the $name archive; install it by hand"
+  else
+    step "Installed $name"
+  fi
+
+  rm -rf "$tmp"
+}
+
 # --- macOS quirks -----------------------------------------------------------
 
 fix_home_end_keys() {
@@ -306,6 +371,9 @@ main() {
 
   log "Repositories"
   setup_code_directories
+
+  log "Fonts"
+  install_fonts
 
   log "macOS quirks"
   fix_home_end_keys

@@ -80,7 +80,7 @@ and safe to re-run, so use them directly when you only need one.
 | Script                    | What it does                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------- |
 | `setup-zsh.sh`            | Xcode CLT, Rosetta, Touch ID for sudo, Homebrew, oh-my-zsh, Ghostty, clone corellia  |
-| `setup-macos.sh`          | Homebrew packages, shell and git config, SSH identity, clone repos, macOS quirks     |
+| `setup-macos.sh`          | Homebrew packages, shell and git config, SSH identity, clone repos, fonts, quirks    |
 | `setup-managed-apps.sh`   | The apps IT normally owns, or a checklist of them when skipped                       |
 | `setup-macos-defaults.sh` | System Settings: computer name, trackpad, Dock, screenshots, reserved hotkeys         |
 | `setup-app-prefs.sh`      | Per-app preferences from `src/conf/defaults`, or `--export` to capture them           |
@@ -183,9 +183,6 @@ is a decision about each item rather than a memory test. `src/conf/Brewfile` and
 `src/conf/Brewfile.managed` are the parts that provision themselves; this is the
 remainder.
 
-[`audit.md`](audit.md) tracks the open questions and one-time cleanups. This
-section is just the list.
-
 ### Installed by hand — no cask exists, or the licence makes one pointless
 
 | App | Notes |
@@ -253,20 +250,32 @@ are not in `src/conf/Brewfile`:
 - `ffmpeg@4` — pinned old major for one project. The Brewfile has current `ffmpeg`.
 - `reattach-to-user-namespace` — tmux clipboard glue, unnecessary since macOS 10.14.
 
-Global npm packages beyond the ones `setup-languages.sh` installs: `@openai/codex`,
-`cursor-history`, `git2txt`, `http-server`, `surge`, `vercel`. All genuine global
-CLIs; see the audit for whether they should join the list.
+Global npm packages that were installed here before `setup-languages.sh` knew
+about them: `@openai/codex`, `http-server`, `surge`, and `vercel` have since
+joined `NPM_GLOBALS`. `cursor-history` and `git2txt` are left out on purpose, as
+is `source-map-explorer`, which was dropped from the list.
 
-`pipx` tools, being migrated to `uv tool install`: `aider-chat`, `yt-dlp`,
-`viztracer`, `asitop`, `maturin`, `hatch`, `tox`, `invoke`, `poetry`, `fal`,
-`runpod`.
+The `pipx` tools are migrated. `yt-dlp`, `tox`, and `invoke` come from
+`UV_TOOLS`; `poetry`, `hatch`, `pre-commit`, `maturin`, `viztracer`, `asitop`,
+and `aider-chat` are per-project or occasional, and `fal` and `runpod` are vendor
+SDKs tied to an account, so all of those belong in a project venv reached with
+`uvx` rather than installed globally.
 
 ### Fonts
 
 `~/Library/Fonts` holds Aurebesh (and its condensed, bold, and italic cuts),
-Starjedi, BonheurRoyale, BrunoAce, and Handodle. Small enough to commit and
-symlink; the audit tracks that. `font-jetbrains-mono-nerd-font` comes from the
-Brewfile.
+Starjedi, BonheurRoyale, BrunoAce, and Handodle. All of them provision themselves
+now, in two ways, and none is committed to this repo: BonheurRoyale and BrunoAce
+are on Google Fonts, so they're casks in the Brewfile alongside
+`font-jetbrains-mono-nerd-font`, while Aurebesh, Star Jedi, and Handodle have no
+cask and are downloaded from dafont by `install_fonts()` in `setup-macos.sh`.
+
+Downloaded rather than committed because none of the three is redistributable —
+Handodle's free build is personal-use only, with a commercial licence sold
+separately. The archives carry more than the fonts wanted, so each row of the
+`FONTS` table names the members to install: dafont's Star Jedi ships eight faces
+across four directories when only the base one is used here, and the Aurebesh and
+Handodle zips bundle a licence file and a PDF.
 
 ### Work-managed, out of scope
 

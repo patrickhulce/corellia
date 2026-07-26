@@ -16,11 +16,18 @@ NODE_VERSION="${CORELLIA_NODE_VERSION:-lts}"
 
 # Genuinely global CLIs only. Things like typescript and yarn belong to projects,
 # where a global pin just creates version skew.
-NPM_GLOBALS="pnpm jest @patrickhulce/scripts source-map-explorer pkgfiles siegem"
+NPM_GLOBALS="pnpm jest @patrickhulce/scripts pkgfiles siegem \
+  @openai/codex http-server surge vercel"
 
 # clippy and rustfmt come with the default profile; rust-analyzer does not, and
 # editors expect the rustup-managed copy rather than a bundled one.
 RUST_COMPONENTS="clippy rustfmt rust-analyzer"
+
+# Python CLIs wanted from any directory, replacing the pipx installs of the same.
+# Deliberately short: poetry, hatch, pre-commit, maturin, viztracer, asitop, and
+# aider-chat are per-project or occasional, and fal and runpod are vendor SDKs
+# tied to an account, so all of them belong in a project venv resolved with uvx.
+UV_TOOLS="yt-dlp tox invoke"
 
 SKILLZ_DIR="${CORELLIA_SKILLZ_DIR:-$HOME/Code/OpenSource/skillz}"
 SKILLZ_INSTALLER="https://raw.githubusercontent.com/patrickhulce/skillz/main/install.sh"
@@ -81,11 +88,14 @@ install_python_tools() {
   have uv || die "uv is missing; run setup-macos.sh first"
 
   step "Installing Python tools with uv"
-  uv tool install --quiet jupyter-core
-  uv tool install --quiet nbconvert
+  local tool
+  for tool in $UV_TOOLS; do
+    uv tool install --quiet "$tool"
+  done
 
   # Strip notebook output on commit. Resolved through uvx so the filter doesn't
-  # depend on whatever PATH git happens to run with.
+  # depend on whatever PATH git happens to run with, and so nbconvert needs no
+  # permanent install of its own.
   step "Configuring the notebook output filter"
   git config --global filter.strip-notebook-output.clean \
     'uvx --from nbconvert jupyter-nbconvert --ClearOutputPreprocessor.enabled=True --to=notebook --stdin --stdout --log-level=ERROR'

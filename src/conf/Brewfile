@@ -9,7 +9,8 @@
 #   brew bundle dump --file /tmp/Brewfile.actual
 #   diff <(sort src/conf/Brewfile) <(sort /tmp/Brewfile.actual)
 #
-# src/docs/setup/audit.md records what was deliberately left out, and why.
+# What was deliberately left out, and why, is in src/docs/setup/mac-setup.md
+# under "Inventory of the old machine".
 
 # GNU/BSD parity and shell basics
 brew "coreutils"
@@ -88,6 +89,12 @@ cask "rectangle"
 # Fonts. starship's prompt and eza's icons need Nerd Font glyphs, and
 # src/conf/ghostty/config asks for this family by name.
 cask "font-jetbrains-mono-nerd-font"
+
+# Display fonts, cask-installable because they're on Google Fonts. The rest of
+# the personal set has no cask and is downloaded by install_fonts() in
+# setup-macos.sh rather than committed here.
+cask "font-bonheur-royale"
+cask "font-bruno-ace"
 
 # Browsers. Chrome itself is in Brewfile.managed, since IT owns it on a work
 # machine; the canary channel is nobody's managed install.
