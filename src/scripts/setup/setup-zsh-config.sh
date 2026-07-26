@@ -14,6 +14,7 @@
 set -euo pipefail
 
 RAW_BASE="https://raw.githubusercontent.com/patrickhulce/corellia/main/src/conf"
+CORELLIA_REPO="https://github.com/patrickhulce/corellia.git"
 ZSH_DIR="$HOME/.config/zsh"
 GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
 
@@ -31,6 +32,7 @@ ZSH_FILES=(
 )
 
 step() { printf '\033[1;32m  +\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 die() {
   printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
   exit 1
@@ -40,14 +42,64 @@ command -v curl >/dev/null 2>&1 || die "curl is required"
 
 mkdir -p "$ZSH_DIR" "$(dirname "$GHOSTTY_CONFIG")"
 
+curl_failures=0
 for name in "${ZSH_FILES[@]}"; do
-  curl -fsSL -o "$ZSH_DIR/$name" "$RAW_BASE/zsh/$name" ||
-    die "could not download $RAW_BASE/zsh/$name"
-  step "Wrote $ZSH_DIR/$name"
+  if curl -fsSL --max-time 30 -o "$ZSH_DIR/$name" "$RAW_BASE/zsh/$name"; then
+    step "Wrote $ZSH_DIR/$name"
+  else
+    warn "could not download $RAW_BASE/zsh/$name"
+    curl_failures=$((curl_failures + 1))
+  fi
 done
 
-curl -fsSL -o "$GHOSTTY_CONFIG" "$RAW_BASE/ghostty/config" ||
-  die "could not download $RAW_BASE/ghostty/config"
-step "Wrote $GHOSTTY_CONFIG"
+if curl -fsSL --max-time 30 -o "$GHOSTTY_CONFIG" "$RAW_BASE/ghostty/config"; then
+  step "Wrote $GHOSTTY_CONFIG"
+else
+  warn "could not download $RAW_BASE/ghostty/config"
+  curl_failures=$((curl_failures + 1))
+fi
+
+# curl can fail intermittently in locked-down environments; git sparse clone is
+# the fallback (same repo, different transport).
+if [ "$curl_failures" -gt 0 ]; then
+  if ! command -v git >/dev/null 2>&1; then
+    die "$curl_failures file(s) could not be downloaded and git is not available"
+  fi
+
+  warn "$curl_failures file(s) missing after curl; trying a sparse git clone"
+  tmp="$(mktemp -d)"
+  if git clone --depth=1 --filter=blob:none --sparse "$CORELLIA_REPO" "$tmp" &&
+    git -C "$tmp" sparse-checkout set src/conf/zsh src/conf/ghostty; then
+    for name in "${ZSH_FILES[@]}"; do
+      if [ ! -s "$ZSH_DIR/$name" ] && [ -f "$tmp/src/conf/zsh/$name" ]; then
+        cp "$tmp/src/conf/zsh/$name" "$ZSH_DIR/$name"
+        step "Copied $ZSH_DIR/$name from git checkout"
+      fi
+    done
+    if [ ! -s "$GHOSTTY_CONFIG" ] && [ -f "$tmp/src/conf/ghostty/config" ]; then
+      cp "$tmp/src/conf/ghostty/config" "$GHOSTTY_CONFIG"
+      step "Copied $GHOSTTY_CONFIG from git checkout"
+    fi
+  else
+    warn "sparse git clone failed"
+  fi
+  rm -rf "$tmp"
+fi
+
+missing=0
+for name in "${ZSH_FILES[@]}"; do
+  if [ ! -s "$ZSH_DIR/$name" ]; then
+    warn "missing $ZSH_DIR/$name"
+    missing=$((missing + 1))
+  fi
+done
+if [ ! -s "$GHOSTTY_CONFIG" ]; then
+  warn "missing $GHOSTTY_CONFIG"
+  missing=$((missing + 1))
+fi
+
+if [ "$missing" -gt 0 ]; then
+  die "$missing required file(s) still missing after curl and git fallback"
+fi
 
 printf '\nDone. Open a new shell, or run:\n\n  for f in %s/*.zsh; do . "$f"; done\n' "$ZSH_DIR"

@@ -9,7 +9,9 @@ Sourced in filename order by the `corellia` loader block in `~/.zshrc`, which
 | `05-oh-my-zsh.zsh` | oh-my-zsh, with no theme and two plugins |
 | `10-path.zsh` | `PATH` additions |
 | `20-tools.zsh` | Shell integrations: direnv, mise, zoxide, fzf, starship |
+| `21-term.zsh` | `xterm-ghostty` → `xterm-256color` when terminfo is missing |
 | `22-python-venv.zsh` | Auto-activate `.venv` on cd; exports for starship's python segment |
+| `23-ghostty-ssh-title.zsh` | Ghostty tab titles over SSH |
 | `25-keybindings.zsh` | Key bindings, after the plugins whose widgets they use |
 | `30-aliases.zsh` | Aliases |
 
