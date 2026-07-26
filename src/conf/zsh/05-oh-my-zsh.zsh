@@ -10,7 +10,8 @@
 # ZSH_VERSION guard rather than left to fail halfway through. Everything below
 # still has to *parse* under bash, which `zstyle` and the array assignment do.
 
-if [ -n "${ZSH_VERSION:-}" ] && [ -d "$HOME/.oh-my-zsh" ]; then
+# Skip when ~/.zshrc already sourced oh-my-zsh (common on managed images).
+if [ -n "${ZSH_VERSION:-}" ] && [ -d "$HOME/.oh-my-zsh" ] && ! typeset -f omz >/dev/null 2>&1; then
   export ZSH="$HOME/.oh-my-zsh"
 
   # Empty on purpose: starship replaces the prompt a moment later in
