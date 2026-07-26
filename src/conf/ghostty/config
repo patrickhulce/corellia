@@ -9,6 +9,11 @@
 font-family = FiraCode Nerd Font
 font-size = 20
 
+# Fira Code ligatures (including .. spacing) live in calt; disable all ligature features.
+font-feature = -calt
+font-feature = -liga
+font-feature = -dlig
+
 # IBM Carbon's palette, on a #161616 background. Ships with Ghostty; the file is
 # in Ghostty.app/Contents/Resources/ghostty/themes if you want to read it.
 theme = Carbonfox

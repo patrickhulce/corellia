@@ -13,7 +13,26 @@ if [ -n "${ZSH_VERSION:-}" ]; then
   bindkey '^[[1;2H' beginning-of-line
   bindkey '^[[1;2F' end-of-line
 
-  # Accept the autosuggestion without moving to the end of the line first.
-  # Costs reverse-menu-complete. Inert if zsh-autosuggestions isn't installed.
-  bindkey '^[[Z' autosuggest-accept
+  # Tab accepts an autosuggestion when one is showing; otherwise complete as usual.
+  # Shift+Tab walks completion matches backward. Inert if zsh-autosuggestions isn't
+  # installed.
+  if [[ -n ${widgets[autosuggest-accept]} ]]; then
+    _corellia_tab() {
+      local -i max_cursor=$#BUFFER
+      if [[ $KEYMAP = vicmd ]]; then
+        max_cursor=$((max_cursor - 1))
+      fi
+      if (( $#POSTDISPLAY && CURSOR == max_cursor )); then
+        zle autosuggest-accept
+        # POSTDISPLAY was drawn gray; redraw so accepted text uses normal input styling.
+        _zsh_autosuggest_highlight_reset
+        zle -R
+      else
+        zle expand-or-complete
+      fi
+    }
+    zle -N _corellia_tab
+    bindkey '^I' _corellia_tab
+  fi
+  bindkey '^[[Z' reverse-menu-complete
 fi

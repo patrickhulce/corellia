@@ -48,10 +48,23 @@ fi
 # zsh only. The nearest bash equivalent, ble.sh, isn't worth its startup cost.
 if [ -n "${ZSH_VERSION:-}" ] && [ -n "${HOMEBREW_PREFIX:-}" ] &&
   [ -r "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-  # fg=8 is nearly invisible on Carbonfox; fg=244 without bold — bold inherits from
-  # starship's character module and reads as solid white until zle redraws.
-  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=244'
+  # fg=8 is nearly invisible on Carbonfox. No dimmed — faint SGR sticks on accepted
+  # text after Tab merges POSTDISPLAY into BUFFER.
+  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
   . "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+
+  # history-substring-search (05-oh-my-zsh.zsh) installs a fallback highlighter when
+  # zsh-syntax-highlighting is absent. On zsh 5.9 it hooks zle-line-pre-redraw and
+  # clears region_highlight on every printable key — which wipes autosuggestion color
+  # until a non-printable key like backspace redraws without clearing. Re-apply after
+  # that hook runs (we register later, so this runs last).
+  autoload -Uz add-zle-hook-widget
+  _corellia_autosuggest_pre_redraw() {
+    emulate -L zsh
+    _zsh_autosuggest_highlight_reset
+    _zsh_autosuggest_highlight_apply
+  }
+  add-zle-hook-widget zle-line-pre-redraw _corellia_autosuggest_pre_redraw
 fi
 
 unset _corellia_shell
