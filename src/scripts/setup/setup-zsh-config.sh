@@ -42,9 +42,18 @@ command -v curl >/dev/null 2>&1 || die "curl is required"
 
 mkdir -p "$ZSH_DIR" "$(dirname "$GHOSTTY_CONFIG")"
 
+# newt may have symlinked vendored zsh files here earlier; curl -o cannot replace
+# a symlink pointing at a read-only checkout (curl error 23).
+write_download() {
+  local dest="$1"
+  local url="$2"
+  rm -f "$dest"
+  curl -fsSL --max-time 30 -o "$dest" "$url"
+}
+
 curl_failures=0
 for name in "${ZSH_FILES[@]}"; do
-  if curl -fsSL --max-time 30 -o "$ZSH_DIR/$name" "$RAW_BASE/zsh/$name"; then
+  if write_download "$ZSH_DIR/$name" "$RAW_BASE/zsh/$name"; then
     step "Wrote $ZSH_DIR/$name"
   else
     warn "could not download $RAW_BASE/zsh/$name"
@@ -52,7 +61,7 @@ for name in "${ZSH_FILES[@]}"; do
   fi
 done
 
-if curl -fsSL --max-time 30 -o "$GHOSTTY_CONFIG" "$RAW_BASE/ghostty/config"; then
+if write_download "$GHOSTTY_CONFIG" "$RAW_BASE/ghostty/config"; then
   step "Wrote $GHOSTTY_CONFIG"
 else
   warn "could not download $RAW_BASE/ghostty/config"
@@ -72,11 +81,13 @@ if [ "$curl_failures" -gt 0 ]; then
     git -C "$tmp" sparse-checkout set src/conf/zsh src/conf/ghostty; then
     for name in "${ZSH_FILES[@]}"; do
       if [ ! -s "$ZSH_DIR/$name" ] && [ -f "$tmp/src/conf/zsh/$name" ]; then
+        rm -f "$ZSH_DIR/$name"
         cp "$tmp/src/conf/zsh/$name" "$ZSH_DIR/$name"
         step "Copied $ZSH_DIR/$name from git checkout"
       fi
     done
     if [ ! -s "$GHOSTTY_CONFIG" ] && [ -f "$tmp/src/conf/ghostty/config" ]; then
+      rm -f "$GHOSTTY_CONFIG"
       cp "$tmp/src/conf/ghostty/config" "$GHOSTTY_CONFIG"
       step "Copied $GHOSTTY_CONFIG from git checkout"
     fi
