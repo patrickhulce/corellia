@@ -94,6 +94,7 @@ link_shell_config() {
 
   link_config "$CORELLIA_CONF_DIR/ghostty/config" "$HOME/.config/ghostty/config"
   link_config "$CORELLIA_CONF_DIR/direnv/direnv.toml" "$HOME/.config/direnv/direnv.toml"
+  link_config "$CORELLIA_CONF_DIR/tmux/tmux.conf" "$HOME/.tmux.conf"
 }
 
 install_global_scripts() {

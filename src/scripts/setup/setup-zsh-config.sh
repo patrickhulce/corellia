@@ -17,6 +17,8 @@ RAW_BASE="https://raw.githubusercontent.com/patrickhulce/corellia/main/src/conf"
 CORELLIA_REPO="https://github.com/patrickhulce/corellia.git"
 ZSH_DIR="$HOME/.config/zsh"
 GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
+TERMINFO_DIR="$HOME/.config/terminfo"
+TMUX_CONFIG="$HOME/.tmux.conf"
 
 # Keep in sync with src/conf/zsh/*.zsh (excluding README.md).
 ZSH_FILES=(
@@ -40,7 +42,7 @@ die() {
 
 command -v curl >/dev/null 2>&1 || die "curl is required"
 
-mkdir -p "$ZSH_DIR" "$(dirname "$GHOSTTY_CONFIG")"
+mkdir -p "$ZSH_DIR" "$(dirname "$GHOSTTY_CONFIG")" "$TERMINFO_DIR"
 
 # newt may have symlinked vendored zsh files here earlier; curl -o cannot replace
 # a symlink pointing at a read-only checkout (curl error 23).
@@ -68,6 +70,20 @@ else
   curl_failures=$((curl_failures + 1))
 fi
 
+if write_download "$TERMINFO_DIR/xterm-ghostty.terminfo" "$RAW_BASE/terminfo/xterm-ghostty.terminfo"; then
+  step "Wrote $TERMINFO_DIR/xterm-ghostty.terminfo"
+else
+  warn "could not download $RAW_BASE/terminfo/xterm-ghostty.terminfo"
+  curl_failures=$((curl_failures + 1))
+fi
+
+if write_download "$TMUX_CONFIG" "$RAW_BASE/tmux/tmux.conf"; then
+  step "Wrote $TMUX_CONFIG"
+else
+  warn "could not download $RAW_BASE/tmux/tmux.conf"
+  curl_failures=$((curl_failures + 1))
+fi
+
 # curl can fail intermittently in locked-down environments; git sparse clone is
 # the fallback (same repo, different transport).
 if [ "$curl_failures" -gt 0 ]; then
@@ -78,7 +94,7 @@ if [ "$curl_failures" -gt 0 ]; then
   warn "$curl_failures file(s) missing after curl; trying a sparse git clone"
   tmp="$(mktemp -d)"
   if git clone --depth=1 --filter=blob:none --sparse "$CORELLIA_REPO" "$tmp" &&
-    git -C "$tmp" sparse-checkout set src/conf/zsh src/conf/ghostty; then
+    git -C "$tmp" sparse-checkout set src/conf/zsh src/conf/ghostty src/conf/terminfo src/conf/tmux; then
     for name in "${ZSH_FILES[@]}"; do
       if [ ! -s "$ZSH_DIR/$name" ] && [ -f "$tmp/src/conf/zsh/$name" ]; then
         rm -f "$ZSH_DIR/$name"
@@ -90,6 +106,17 @@ if [ "$curl_failures" -gt 0 ]; then
       rm -f "$GHOSTTY_CONFIG"
       cp "$tmp/src/conf/ghostty/config" "$GHOSTTY_CONFIG"
       step "Copied $GHOSTTY_CONFIG from git checkout"
+    fi
+    if [ ! -s "$TERMINFO_DIR/xterm-ghostty.terminfo" ] &&
+      [ -f "$tmp/src/conf/terminfo/xterm-ghostty.terminfo" ]; then
+      rm -f "$TERMINFO_DIR/xterm-ghostty.terminfo"
+      cp "$tmp/src/conf/terminfo/xterm-ghostty.terminfo" "$TERMINFO_DIR/xterm-ghostty.terminfo"
+      step "Copied $TERMINFO_DIR/xterm-ghostty.terminfo from git checkout"
+    fi
+    if [ ! -s "$TMUX_CONFIG" ] && [ -f "$tmp/src/conf/tmux/tmux.conf" ]; then
+      rm -f "$TMUX_CONFIG"
+      cp "$tmp/src/conf/tmux/tmux.conf" "$TMUX_CONFIG"
+      step "Copied $TMUX_CONFIG from git checkout"
     fi
   else
     warn "sparse git clone failed"
@@ -106,6 +133,14 @@ for name in "${ZSH_FILES[@]}"; do
 done
 if [ ! -s "$GHOSTTY_CONFIG" ]; then
   warn "missing $GHOSTTY_CONFIG"
+  missing=$((missing + 1))
+fi
+if [ ! -s "$TERMINFO_DIR/xterm-ghostty.terminfo" ]; then
+  warn "missing $TERMINFO_DIR/xterm-ghostty.terminfo"
+  missing=$((missing + 1))
+fi
+if [ ! -s "$TMUX_CONFIG" ]; then
+  warn "missing $TMUX_CONFIG"
   missing=$((missing + 1))
 fi
 
