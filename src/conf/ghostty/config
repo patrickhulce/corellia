@@ -49,3 +49,8 @@ keybind = shift+up=unbind
 keybind = shift+down=unbind
 keybind = shift+home=unbind
 keybind = shift+end=unbind
+
+# Auto-sync xterm-ghostty terminfo on SSH hosts; fall back to xterm-256color if tic fails.
+# Without this, backspace and arrow keys misbehave on remotes that lack Ghostty's terminfo.
+# See https://ghostty.org/docs/help/terminfo#ssh
+shell-integration-features = ssh-terminfo,ssh-env

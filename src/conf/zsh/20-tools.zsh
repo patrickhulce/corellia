@@ -46,25 +46,35 @@ fi
 # suggestion for.
 #
 # zsh only. The nearest bash equivalent, ble.sh, isn't worth its startup cost.
-if [ -n "${ZSH_VERSION:-}" ] && [ -n "${HOMEBREW_PREFIX:-}" ] &&
-  [ -r "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-  # fg=8 is nearly invisible on Carbonfox. No dimmed — faint SGR sticks on accepted
-  # text after Tab merges POSTDISPLAY into BUFFER.
-  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
-  . "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+if [ -n "${ZSH_VERSION:-}" ]; then
+  _corellia_autosuggest=""
+  ZSH_CUSTOM="${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}"
+  for _corellia_autosuggest in \
+    "${HOMEBREW_PREFIX:-}/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+    "$ZSH_CUSTOM/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+    "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"; do
+    if [ -r "$_corellia_autosuggest" ]; then
+      # fg=8 is nearly invisible on Carbonfox. No dimmed — faint SGR sticks on accepted
+      # text after Tab merges POSTDISPLAY into BUFFER.
+      ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
+      . "$_corellia_autosuggest"
 
-  # history-substring-search (05-oh-my-zsh.zsh) installs a fallback highlighter when
-  # zsh-syntax-highlighting is absent. On zsh 5.9 it hooks zle-line-pre-redraw and
-  # clears region_highlight on every printable key — which wipes autosuggestion color
-  # until a non-printable key like backspace redraws without clearing. Re-apply after
-  # that hook runs (we register later, so this runs last).
-  autoload -Uz add-zle-hook-widget
-  _corellia_autosuggest_pre_redraw() {
-    emulate -L zsh
-    _zsh_autosuggest_highlight_reset
-    _zsh_autosuggest_highlight_apply
-  }
-  add-zle-hook-widget zle-line-pre-redraw _corellia_autosuggest_pre_redraw
+      # history-substring-search (05-oh-my-zsh.zsh) installs a fallback highlighter when
+      # zsh-syntax-highlighting is absent. On zsh 5.9 it hooks zle-line-pre-redraw and
+      # clears region_highlight on every printable key — which wipes autosuggestion color
+      # until a non-printable key like backspace redraws without clearing. Re-apply after
+      # that hook runs (we register later, so this runs last).
+      autoload -Uz add-zle-hook-widget
+      _corellia_autosuggest_pre_redraw() {
+        emulate -L zsh
+        _zsh_autosuggest_highlight_reset
+        _zsh_autosuggest_highlight_apply
+      }
+      add-zle-hook-widget zle-line-pre-redraw _corellia_autosuggest_pre_redraw
+      break
+    fi
+  done
+  unset _corellia_autosuggest
 fi
 
 unset _corellia_shell
