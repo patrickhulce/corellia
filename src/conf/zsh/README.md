@@ -10,7 +10,7 @@ Sourced in filename order by the `corellia` loader block in `~/.zshrc`, which
 | `10-path.zsh` | `PATH` additions |
 | `20-tools.zsh` | Shell integrations: direnv, mise, zoxide, fzf, starship |
 | `21-term.zsh` | Install bundled `xterm-ghostty` terminfo on SSH hosts; fall back to `xterm-256color` only when `tic` fails |
-| `22-python-venv.zsh` | Auto-activate `.venv` on cd; exports for starship's python segment |
+| `22-python-venv.zsh` | Auto-activate the nearest `.venv` up to the git root, re-checking each prompt that it is really on `PATH`; exports for starship's python segment |
 | `23-ghostty-ssh-title.zsh` | Ghostty tab titles over SSH; tmux session in tab title and starship |
 | `25-keybindings.zsh` | Key bindings, after the plugins whose widgets they use |
 | `30-aliases.zsh` | Aliases |
