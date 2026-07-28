@@ -1,0 +1,25 @@
+# One tab for working in a directory on a remote host:
+#
+#   ghosttyctrl code host=myserver
+#   ghosttyctrl code host=myserver session=claude dir=~/Code/corellia
+#
+# A remote tmux session next to an ordinary remote shell, both in the same
+# directory. The tmux pane is just `sshx`, which is the script that knows how to
+# attach to a session over ssh.
+#
+# The `exec` in the second pane belongs to the remote shell ssh starts, and
+# keeps the pane down to one ssh and one remote process. Don't add one on the
+# local side: Ghostty already execs the command it is given. See
+# src/conf/ghosttyctrl/README.md.
+vars:
+  # No default, so ghosttyctrl requires host=... rather than opening a pane that
+  # runs `ssh ''`.
+  host:
+  session: main
+  # Not expanded locally: the value reaches the remote shell inside the single
+  # quotes below and expands there.
+  dir: $HOME
+tabs:
+  - splits:
+      - command: sshx %host% %session%
+      - command: ssh -t %host% 'cd %dir% && exec "${SHELL:-/bin/zsh}" -l'

@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# ssh straight into a tmux session on a remote host.
+#
+#   sshx                     default host, default session
+#   sshx myserver            default session on myserver
+#   sshx myserver claude     session `claude` on myserver
+#   sshx -s claude           session `claude` on the default host
+#   sshx --dry-run myserver  print the ssh command instead of running it
+#
+# The session is attached if it exists and created if it doesn't. This replaces
+# the current shell, so it works in a local terminal, in a ghosttyctrl pane, or
+# nested inside another ssh session. For Ghostty tab and split layouts, see
+# ghosttyctrl.
+
+set -euo pipefail
+
+readonly DEFAULT_HOST_ENV=CORELLIA_SSHX_DEFAULT_HOST
+readonly DEFAULT_SESSION_ENV=CORELLIA_SSHX_DEFAULT_SESSION
+readonly FALLBACK_SESSION=main
+
+usage() {
+  cat <<EOF
+usage: sshx [--dry-run] [--host HOST] [-s SESSION] [HOST [SESSION]]
+
+Attach to (or create) a tmux session on a remote host over ssh.
+
+  HOST      ssh destination; defaults to \$$DEFAULT_HOST_ENV
+  SESSION   tmux session name; defaults to \$$DEFAULT_SESSION_ENV, then $FALLBACK_SESSION
+
+  -s, --session NAME  tmux session, for when the host comes from the environment
+      --host HOST     ssh destination
+      --dry-run       print the ssh command instead of running it
+  -h, --help          this message
+EOF
+}
+
+die() {
+  echo "sshx: $1" >&2
+  exit 2
+}
+
+host=""
+session=""
+dry_run=false
+positional=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    --dry-run)
+      dry_run=true
+      shift
+      ;;
+    -s | --session)
+      [ $# -ge 2 ] || die "$1 needs a value"
+      session="$2"
+      shift 2
+      ;;
+    --session=*)
+      session="${1#*=}"
+      shift
+      ;;
+    --host)
+      [ $# -ge 2 ] || die "$1 needs a value"
+      host="$2"
+      shift 2
+      ;;
+    --host=*)
+      host="${1#*=}"
+      shift
+      ;;
+    --)
+      shift
+      # Bash 3.2 treats an empty array as unset under `set -u`, so guard the
+      # expansion rather than appending "$@" directly.
+      [ $# -eq 0 ] || positional+=("$@")
+      break
+      ;;
+    -*)
+      die "unknown option $1"
+      ;;
+    *)
+      positional+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ ${#positional[@]} -gt 2 ]; then
+  die "expected at most HOST and SESSION, got ${#positional[@]} arguments"
+fi
+if [ ${#positional[@]} -ge 1 ]; then
+  host="${positional[0]}"
+fi
+if [ ${#positional[@]} -eq 2 ]; then
+  session="${positional[1]}"
+fi
+
+if [ -z "$host" ]; then
+  host="${!DEFAULT_HOST_ENV:-}"
+fi
+if [ -z "$host" ]; then
+  die "no host given, and \$$DEFAULT_HOST_ENV is unset or empty"
+fi
+
+if [ -z "$session" ]; then
+  session="${!DEFAULT_SESSION_ENV:-}"
+fi
+if [ -z "$session" ]; then
+  session="$FALLBACK_SESSION"
+fi
+
+# Both values end up inside a command string the remote shell parses, so keep
+# them to characters that cannot mean anything there.
+case "$host" in
+  *[!A-Za-z0-9_.:@-]*) die "invalid ssh host '$host'" ;;
+esac
+case "$session" in
+  *[!A-Za-z0-9_.-]*) die "invalid tmux session name '$session'" ;;
+esac
+
+# -t because tmux needs a tty; the remote `exec` keeps the connection down to
+# one ssh and one tmux, with no login shell waiting behind them.
+remote="exec tmux new-session -A -s $session"
+
+if [ "$dry_run" = true ]; then
+  echo "ssh -t $host '$remote'"
+  exit 0
+fi
+
+exec ssh -t "$host" "$remote"

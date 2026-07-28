@@ -1,0 +1,16 @@
+# A new window with one shell tab:
+#
+#   ghosttyctrl new
+#   ghosttyctrl new dir=~/Code/corellia
+#
+# No `command`, so the pane is an ordinary login shell. `dir` is an AppleScript
+# property rather than a shell string, so `~` is expanded locally before the
+# window opens. See src/conf/ghosttyctrl/README.md.
+window: new
+vars:
+  # Quoted, because a bare ~ is null in YAML — which here would mean a var with
+  # no default, i.e. one ghosttyctrl insists you pass.
+  dir: "~"
+tabs:
+  - splits:
+      - dir: "%dir%"

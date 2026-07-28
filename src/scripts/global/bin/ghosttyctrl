@@ -1,0 +1,397 @@
+#!/usr/bin/env -S uv run --python 3.12 --script
+# /// script
+# requires-python = "==3.12.*"
+# dependencies = [
+#   "pyyaml==6.0.2",
+# ]
+# ///
+"""Open a Ghostty tab-and-split layout from a YAML template.
+
+    ghosttyctrl                    the `default` template, or `extend`
+    ghosttyctrl new                a new window
+    ghosttyctrl code host=myserver
+
+Templates live in src/conf/ghosttyctrl/templates (see the README there).  A
+template says what each pane runs and where; nothing here knows about ssh, so a
+pane that wants a remote tmux session runs ``sshx``.
+
+The layout is realized by piping a generated AppleScript to osascript, because
+Ghostty's scripting dictionary is the only way to place a command in a specific
+tab or split.
+
+Commands are passed to Ghostty verbatim.  Ghostty runs a command with
+arguments through a shell, but it already execs it -- on macOS the pane is
+``login -flp USER /bin/bash --noprofile --norc -c 'exec -l COMMAND'`` -- so a
+pane costs one process and an ``exec`` of our own would be handed to ``exec
+-l`` as a program name and fail.
+"""
+
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import yaml
+
+TEMPLATE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+PLACEHOLDER_RE = re.compile(r"%([A-Za-z0-9_-]+)%")
+
+# With no template named, a `default.yml` of your own wins and `extend` is the
+# fallback. Nothing ships a `default.yml`; the hook is there so a machine can
+# set what a bare `ghosttyctrl` does without editing this script.
+DEFAULT_TEMPLATE = "default"
+FALLBACK_TEMPLATE = "extend"
+
+WINDOW_MODES = ("new", "extend")
+DEFAULT_WINDOW = "extend"
+
+# Repo copy, reached through the ~/.scripts symlink: bin -> global -> scripts -> src.
+REPO_TEMPLATES = Path(__file__).resolve().parents[3] / "conf" / "ghosttyctrl" / "templates"
+
+
+class GhosttyctrlError(Exception):
+    """A user-facing failure; main() prints it without a traceback."""
+
+
+@dataclasses.dataclass
+class Split:
+    command: str | None = None
+    directory: str | None = None
+    keep_open: bool = False
+
+
+@dataclasses.dataclass
+class Tab:
+    splits: list[Split]
+
+
+@dataclasses.dataclass
+class Layout:
+    tabs: list[Tab]
+    window: str
+
+
+def template_dirs() -> list[Path]:
+    candidates = []
+    if env := os.environ.get("GHOSTTYCTRL_TEMPLATES"):
+        candidates.extend(Path(p).expanduser() for p in env.split(os.pathsep) if p)
+    candidates.append(Path.home() / ".config" / "ghosttyctrl" / "templates")
+    candidates.append(REPO_TEMPLATES)
+
+    # On a set-up Mac ~/.config/ghosttyctrl/templates is a symlink to the repo
+    # copy, so without this the two are searched — and reported as missing —
+    # separately.
+    dirs = []
+    seen = set()
+    for directory in candidates:
+        key = directory.resolve()
+        if key not in seen:
+            seen.add(key)
+            dirs.append(directory)
+    return dirs
+
+
+def parse_overrides(tokens: list[str]) -> dict[str, str]:
+    overrides: dict[str, str] = {}
+    for token in tokens:
+        if "=" not in token:
+            raise GhosttyctrlError(
+                f"expected key=value after the template name, got {token!r}"
+            )
+        key, value = token.split("=", 1)
+        if not key:
+            raise GhosttyctrlError(f"missing variable name in {token!r}")
+        overrides[key] = value
+    return overrides
+
+
+def find_template(name: str) -> Path | None:
+    if not TEMPLATE_RE.match(name):
+        raise GhosttyctrlError(f"invalid template name {name!r}")
+
+    for directory in template_dirs():
+        path = directory / f"{name}.yml"
+        if path.is_file():
+            return path
+    return None
+
+
+def load_template(name: str) -> dict:
+    path = find_template(name)
+    if path is None:
+        listed = "\n  ".join(str(d) for d in template_dirs())
+        raise GhosttyctrlError(f"no template {name!r}.yml in:\n  {listed}")
+
+    loaded = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(loaded, dict):
+        raise GhosttyctrlError(f"{path} must be a mapping with a `tabs` key")
+    return loaded
+
+
+def default_template() -> str:
+    return DEFAULT_TEMPLATE if find_template(DEFAULT_TEMPLATE) else FALLBACK_TEMPLATE
+
+
+def list_templates() -> str:
+    lines = []
+    for directory in template_dirs():
+        names = sorted(p.stem for p in directory.glob("*.yml")) if directory.is_dir() else []
+        listed = ", ".join(names) if names else "(none)"
+        lines.append(f"{directory}: {listed}")
+    return "\n".join(lines) + "\n"
+
+
+def resolve_vars(template: dict, overrides: dict[str, str]) -> dict[str, str]:
+    declared = template.get("vars") or {}
+    if not isinstance(declared, dict):
+        raise GhosttyctrlError("`vars` must be a mapping of name to default value")
+
+    unknown = sorted(set(overrides) - set(declared))
+    if unknown:
+        known = ", ".join(sorted(declared)) or "none"
+        raise GhosttyctrlError(
+            f"template does not declare {', '.join(unknown)} "
+            f"(declared vars: {known})"
+        )
+
+    # `host:` with nothing after it is a var the template cannot guess a default
+    # for. Catching it here beats opening a pane that runs `ssh ''`.
+    required = sorted(key for key, value in declared.items() if value is None)
+
+    values = {key: str(value) for key, value in declared.items() if value is not None}
+    values.update(overrides)
+
+    missing = [key for key in required if not values.get(key)]
+    if missing:
+        listed = " ".join(f"{key}=..." for key in missing)
+        raise GhosttyctrlError(f"this template needs {listed}")
+
+    return values
+
+
+def substitute(text: str, values: dict[str, str]) -> str:
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name not in values:
+            raise GhosttyctrlError(f"no value for %{name}% in {text!r}")
+        return values[name]
+
+    return PLACEHOLDER_RE.sub(replace, text)
+
+
+def window_mode(template: dict) -> str:
+    mode = template.get("window", DEFAULT_WINDOW)
+    if mode not in WINDOW_MODES:
+        raise GhosttyctrlError(
+            f"`window` must be one of {', '.join(WINDOW_MODES)}, not {mode!r}"
+        )
+    return mode
+
+
+def build_layout(template: dict, values: dict[str, str]) -> Layout:
+    raw_tabs = template.get("tabs")
+    if not isinstance(raw_tabs, list) or not raw_tabs:
+        raise GhosttyctrlError("template needs a non-empty `tabs` list")
+
+    tabs = []
+    for tab_index, raw_tab in enumerate(raw_tabs, start=1):
+        if not isinstance(raw_tab, dict):
+            raise GhosttyctrlError(
+                f"tab {tab_index} must be a mapping with a `splits` key"
+            )
+
+        raw_splits = raw_tab.get("splits")
+        if not isinstance(raw_splits, list) or not raw_splits:
+            raise GhosttyctrlError(f"tab {tab_index} needs a non-empty `splits` list")
+
+        splits = []
+        for split_index, raw_split in enumerate(raw_splits, start=1):
+            where = f"tab {tab_index} split {split_index}"
+            if not isinstance(raw_split, dict):
+                raise GhosttyctrlError(f"{where} must be a mapping")
+
+            command = raw_split.get("command")
+            if command is not None and (
+                not isinstance(command, str) or not command.strip()
+            ):
+                raise GhosttyctrlError(f"{where} has an empty `command`")
+            if command is not None:
+                command = substitute(command.strip(), values)
+
+            directory = raw_split.get("dir")
+            if directory is not None and not isinstance(directory, str):
+                raise GhosttyctrlError(f"{where} needs `dir` to be a string")
+            if directory is not None:
+                # A path handed to AppleScript, not to a shell, so expand it
+                # here — unlike a `command`, which a remote shell may expand.
+                directory = substitute(directory.strip(), values)
+                directory = os.path.expanduser(os.path.expandvars(directory)) or None
+
+            splits.append(
+                Split(
+                    command=command,
+                    directory=directory,
+                    keep_open=bool(raw_split.get("keep_open", False)),
+                )
+            )
+
+        tabs.append(Tab(splits=splits))
+
+    return Layout(tabs=tabs, window=window_mode(template))
+
+
+def as_applescript_string(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def generate_applescript(layout: Layout) -> str:
+    lines = ['tell application "Ghostty"', "\tactivate"]
+
+    for tab_index, tab in enumerate(layout.tabs, start=1):
+        for split_index, split in enumerate(tab.splits, start=1):
+            config = f"config{tab_index}_{split_index}"
+            pane = f"pane{tab_index}_{split_index}"
+
+            lines.append(f"\tset {config} to new surface configuration")
+            if split.command is not None:
+                command = as_applescript_string(split.command)
+                lines.append(f"\tset command of {config} to {command}")
+            if split.directory is not None:
+                directory = as_applescript_string(split.directory)
+                lines.append(
+                    f"\tset initial working directory of {config} to {directory}"
+                )
+            if split.keep_open:
+                lines.append(f"\tset wait after command of {config} to true")
+
+            if split_index > 1:
+                previous = f"pane{tab_index}_{split_index - 1}"
+                lines.append(
+                    f"\tset {pane} to split {previous} direction right "
+                    f"with configuration {config}"
+                )
+                continue
+
+            if tab_index == 1:
+                if layout.window == "new":
+                    lines.extend(
+                        [
+                            f"\tset targetWindow to new window with configuration {config}",
+                            f"\tset tab{tab_index} to selected tab of targetWindow",
+                        ]
+                    )
+                else:
+                    # Extend the front window, but a Ghostty with no windows open
+                    # (or one only just launched by `activate`) needs one first.
+                    lines.extend(
+                        [
+                            "\tif (count of windows) is 0 then",
+                            f"\t\tset targetWindow to new window with configuration {config}",
+                            f"\t\tset tab{tab_index} to selected tab of targetWindow",
+                            "\telse",
+                            "\t\tset targetWindow to front window",
+                            f"\t\tset tab{tab_index} to new tab in targetWindow "
+                            f"with configuration {config}",
+                            "\tend if",
+                        ]
+                    )
+            else:
+                lines.append(
+                    f"\tset tab{tab_index} to new tab in targetWindow "
+                    f"with configuration {config}"
+                )
+
+            lines.append(f"\tset {pane} to focused terminal of tab{tab_index}")
+
+    lines.append("\tfocus pane1_1")
+    lines.append("end tell")
+    return "\n".join(lines) + "\n"
+
+
+def run_applescript(script: str) -> int:
+    try:
+        completed = subprocess.run(["osascript", "-"], input=script, text=True)
+    except FileNotFoundError:
+        raise GhosttyctrlError(
+            "osascript not found; ghosttyctrl only works on macOS"
+        ) from None
+
+    if completed.returncode != 0:
+        print(
+            "ghosttyctrl: osascript failed. If this is the first run, allow the "
+            "terminal to control Ghostty under System Settings > Privacy & "
+            "Security > Automation, then try again.",
+            file=sys.stderr,
+        )
+    return completed.returncode
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="ghosttyctrl",
+        description="Open a Ghostty tab-and-split layout from a YAML template.",
+    )
+    parser.add_argument(
+        "template",
+        nargs="?",
+        help=f"template name (default: {DEFAULT_TEMPLATE}, else {FALLBACK_TEMPLATE})",
+    )
+    parser.add_argument(
+        "overrides",
+        nargs="*",
+        metavar="KEY=VALUE",
+        help="values for variables the template declares",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="list the templates on the search path and exit",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the generated AppleScript instead of running it",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+
+    if args.list:
+        sys.stdout.write(list_templates())
+        return 0
+
+    # `ghosttyctrl dir=foo` means the default template with an override, not a
+    # template named `dir=foo`.
+    name = args.template
+    overrides = list(args.overrides)
+    if name is not None and "=" in name:
+        overrides.insert(0, name)
+        name = None
+    if name is None:
+        name = default_template()
+
+    template = load_template(name)
+    values = resolve_vars(template, parse_overrides(overrides))
+    script = generate_applescript(build_layout(template, values))
+
+    if args.dry_run:
+        sys.stdout.write(script)
+        return 0
+
+    return run_applescript(script)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except GhosttyctrlError as error:
+        print(f"ghosttyctrl: {error}", file=sys.stderr)
+        sys.exit(2)

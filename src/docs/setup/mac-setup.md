@@ -132,10 +132,19 @@ in `$HOME`.
 - `src/conf/zsh/*.zsh` — shell config, sourced by one loader block in `~/.zshrc`
 - `src/conf/direnv/direnv.toml` — direnv
 - `src/conf/ghostty/config` — terminal
+- `src/conf/ghosttyctrl/templates/*.yml` — `ghosttyctrl` tab and split layouts
 - `src/conf/starship/` — the prompt, and the init script that loads it
 - `src/conf/gitignore` — global gitignore, registered as `core.excludesfile`
 - `src/conf/DefaultKeyBinding.dict` — the Home/End fix
 - `src/conf/defaults/*.plist` — per-app preferences, applied by `setup-app-prefs.sh`
+
+Commands rather than config live in `src/scripts/global/bin`, linked as
+`~/.scripts` and put on `PATH`. Two of them work together but stay apart:
+`sshx` attaches to a tmux session on a remote host in whatever terminal you run
+it from, and `ghosttyctrl` arranges Ghostty tabs and splits from the templates
+above — a pane of which may well be an `sshx`. See
+[`src/conf/ghosttyctrl/README.md`](../../conf/ghosttyctrl/README.md) and
+`sshx --help`.
 
 Editor extensions are the exception, and stay a reference list in
 [`editor-extensions.md`](editor-extensions.md) rather than an install step:

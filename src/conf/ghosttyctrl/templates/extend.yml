@@ -1,0 +1,15 @@
+# One more shell tab in the window that is already frontmost:
+#
+#   ghosttyctrl
+#   ghosttyctrl extend dir=~/Code/corellia
+#
+# This is what a bare `ghosttyctrl` runs unless a default.yml exists, so the
+# first form is the whole point of it.
+# `dir` is empty by default, which leaves the property unset and lets Ghostty
+# inherit the directory the way a manually opened tab would.
+window: extend
+vars:
+  dir: ""
+tabs:
+  - splits:
+      - dir: "%dir%"
