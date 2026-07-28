@@ -1,0 +1,19 @@
+// Zed keybindings, symlinked to ~/.config/zed/keymap.json by setup-macos.sh.
+//
+// "base_keymap": "VSCode" in settings.json covers everything else. Only the
+// bindings that differ from VS Code's belong here.
+[
+  {
+    // The split shortcuts src/conf/ghostty/config uses, so the same two keys
+    // split a pane in the terminal and in the editor.
+    //
+    // Zed already binds cmd-\ to SplitRight, but only in the Editor context, and
+    // has nothing on cmd-shift-\. Binding both on Workspace keeps the pair
+    // together and makes them work with the focus outside a buffer.
+    "context": "Workspace",
+    "bindings": {
+      "cmd-\\": "pane::SplitRight",
+      "cmd-shift-\\": "pane::SplitDown"
+    }
+  }
+]

@@ -110,6 +110,11 @@ cask "firefox"
 cask "google-chrome@canary"
 cask "microsoft-edge"
 
+# Editors. Cursor is in Brewfile.managed, since IT owns it on a work machine.
+# Zed is nobody's managed install, and unlike the other two it has no account
+# sync, so its configuration is versioned in src/conf/zed instead.
+cask "zed"
+
 # Cloud
 cask "gcloud-cli" # renamed from google-cloud-sdk
 

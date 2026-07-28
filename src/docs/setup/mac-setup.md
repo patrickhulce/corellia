@@ -133,6 +133,7 @@ in `$HOME`.
 - `src/conf/direnv/direnv.toml` — direnv
 - `src/conf/ghostty/config` — terminal
 - `src/conf/ghosttyctrl/templates/*.yml` — `ghosttyctrl` tab and split layouts
+- `src/conf/zed/{settings,keymap}.json` — the Zed editor
 - `src/conf/starship/` — the prompt, and the init script that loads it
 - `src/conf/gitignore` — global gitignore, registered as `core.excludesfile`
 - `src/conf/DefaultKeyBinding.dict` — the Home/End fix
@@ -149,7 +150,10 @@ above — a pane of which may well be an `sshx`. See
 Editor extensions are the exception, and stay a reference list in
 [`editor-extensions.md`](editor-extensions.md) rather than an install step:
 Cursor and VS Code both sync extensions through their own accounts, so scripting
-the install fights that sync instead of helping it.
+the install fights that sync instead of helping it. Zed is the editor that isn't
+an exception — it has no account sync, so its settings and keymap are versioned
+and linked like any other text config. [`src/conf/zed/README.md`](../../conf/zed/README.md)
+covers why they're linked file by file rather than as a directory.
 
 Machine-specific, non-secret overrides go in `~/.zshrc.local`, which the loader
 sources last.
