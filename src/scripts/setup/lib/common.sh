@@ -30,9 +30,70 @@ die() {
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# --- operating system -------------------------------------------------------
+
+# Resolved once, so the branches throughout these scripts are a string
+# comparison rather than a fork of `uname` each time.
+case "$(uname -s)" in
+  Darwin) CORELLIA_OS=macos ;;
+  Linux) CORELLIA_OS=linux ;;
+  *) CORELLIA_OS=unsupported ;;
+esac
+
+is_macos() { [ "$CORELLIA_OS" = macos ]; }
+is_linux() { [ "$CORELLIA_OS" = linux ]; }
+
 require_macos() {
-  [ "$(uname -s)" = "Darwin" ] || die "this script only supports macOS"
+  is_macos || die "this script only supports macOS"
 }
+
+require_linux() {
+  is_linux || die "this script only supports Linux"
+}
+
+require_supported_os() {
+  case "$CORELLIA_OS" in
+    macos | linux) ;;
+    *) die "unsupported operating system: $(uname -s)" ;;
+  esac
+}
+
+# The script that provisions this machine, so the "run X first" messages name
+# the right one on both platforms instead of always pointing at the Mac.
+os_setup_script() {
+  if is_macos; then
+    printf 'setup-macos.sh\n'
+  else
+    printf 'setup-linux.sh\n'
+  fi
+}
+
+# --- identity ---------------------------------------------------------------
+
+# Used by both the git configuration and the ssh key comment.
+# shellcheck disable=SC2034 # read by the scripts that source this file
+CORELLIA_GIT_NAME="${CORELLIA_GIT_NAME:-Patrick Hulce}"
+# shellcheck disable=SC2034 # read by the scripts that source this file
+CORELLIA_GIT_EMAIL="${CORELLIA_GIT_EMAIL:-patrick.hulce@gmail.com}"
+
+# --- path -------------------------------------------------------------------
+
+# src/conf/zsh/10-path.zsh puts these on PATH in the *next* shell. This one has
+# to be told, or every step that uses what the step before it just installed —
+# setup-languages.sh reaching for the mise the Linux setup fetched a minute
+# earlier, say — fails to find a binary that is sitting right there.
+ensure_setup_path() {
+  local dir
+  for dir in "$HOME/.cargo/bin" "$HOME/.local/bin"; do
+    case ":$PATH:" in
+      *":$dir:"*) ;;
+      *) PATH="$dir:$PATH" ;;
+    esac
+  done
+  export PATH
+}
+
+ensure_setup_path
 
 # --- file editing -----------------------------------------------------------
 
@@ -150,6 +211,134 @@ brew_bundle() {
   brew bundle check --verbose --no-upgrade --file "$file" || true
 
   brew bundle install --verbose --no-upgrade --file "$file"
+}
+
+# --- apt --------------------------------------------------------------------
+
+# Already root, and on a machine with no sudo installed — a container, or a run
+# through `sudo bash setup-linux.sh`. Standing in for it keeps one code path
+# below instead of a $SUDO prefix on thirty commands, and turns "sudo: command
+# not found" back into the no-op it should be.
+#
+# Through `env` rather than a bare "$@", for the `sudo VAR=value cmd` calls: the
+# shell decides what is a variable assignment before "$@" is expanded, so it
+# would take the assignment for the command name and report it as not found.
+# Nothing here passes sudo's own flags, which env would not understand.
+if [ "$(id -u)" -eq 0 ] && ! command -v sudo >/dev/null 2>&1; then
+  sudo() { env "$@"; }
+fi
+
+# Refreshing the catalog is a minute the setup only needs to spend once, but
+# every helper below has to be able to assume it has happened.
+CORELLIA_APT_UPDATED=""
+
+apt_refresh() {
+  [ -z "$CORELLIA_APT_UPDATED" ] || return 0
+
+  step "Refreshing the apt catalog"
+  note "A download from the distribution mirrors; quiet for a minute."
+  sudo apt-get update -qq
+  CORELLIA_APT_UPDATED=1
+}
+
+# apt_install <package>...
+#
+# Installs only the packages that are missing. apt would reach the same
+# conclusion on its own, but not before spending the catalog refresh above to
+# get there, which turns every re-run into a minute of silence for nothing.
+apt_install() {
+  local pkg missing=""
+
+  for pkg in "$@"; do
+    if apt_installed "$pkg"; then
+      skip "$pkg already installed"
+    else
+      missing="$missing $pkg"
+    fi
+  done
+
+  [ -n "$missing" ] || return 0
+
+  apt_refresh
+  step "Installing:$missing"
+  # </dev/null because callers loop over a package table on stdin, and an
+  # apt-get that read from it would swallow the rest of the list. Nothing is
+  # lost: -y and DEBIAN_FRONTEND already say there is nobody here to ask.
+  # shellcheck disable=SC2086 # deliberate word splitting of the package list
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $missing </dev/null
+}
+
+apt_installed() {
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null |
+    grep -q '^install ok installed$'
+}
+
+# apt_available <package>
+#
+# Whether this release's archive can install <package> at all. The Linux setup
+# asks before falling back to an upstream build, because several of these tools
+# arrived in Debian and Ubuntu only recently: eza and git-delta are in 24.04 but
+# not 22.04, and the fallback is worth avoiding when the archive has a copy.
+apt_available() {
+  local candidate
+
+  apt_refresh
+  candidate="$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+  [ -n "$candidate" ] && [ "$candidate" != "(none)" ]
+}
+
+# apt_repo <name> <key-url> <repository-line>
+#
+# Registers a third-party apt repository, with its key in /etc/apt/keyrings.
+# That is what replaced `apt-key add`, which was deprecated in Ubuntu 22.04 and
+# is gone in 24.04 — and which trusted every key it was given for the whole
+# archive rather than for the one repository that supplied it.
+apt_repo() {
+  local name="$1"
+  local key_url="$2"
+  local line="$3"
+
+  local keyring="/etc/apt/keyrings/$name.gpg"
+  local list="/etc/apt/sources.list.d/$name.list"
+
+  if [ -s "$keyring" ] && [ -s "$list" ]; then
+    skip "the $name apt repository is already registered"
+    return 0
+  fi
+
+  step "Registering the $name apt repository"
+  sudo install -m 0755 -d /etc/apt/keyrings
+
+  # Some projects publish an ASCII-armoured key and some a binary keyring, and
+  # apt only takes the latter. Detected rather than assumed, because the two are
+  # not distinguishable by URL and `gpg --dearmor` is only correct for one.
+  local tmp
+  tmp="$(mktemp)"
+  curl -fsSL "$key_url" -o "$tmp" || {
+    rm -f "$tmp"
+    die "could not download the $name signing key from $key_url"
+  }
+
+  if grep -q 'BEGIN PGP' "$tmp"; then
+    gpg --dearmor --yes -o "$tmp.gpg" <"$tmp"
+    mv "$tmp.gpg" "$tmp"
+  fi
+  sudo install -m 0644 "$tmp" "$keyring"
+  rm -f "$tmp"
+
+  sudo chmod 0644 "$keyring"
+  printf '%s\n' "$line" | sudo tee "$list" >/dev/null
+
+  # A repository the last refresh didn't know about, so that refresh no longer
+  # counts. Clearing the flag is what makes the install that follows see it.
+  CORELLIA_APT_UPDATED=""
+  apt_refresh
+}
+
+# amd64 or arm64, the spelling .deb release assets are named with. Projects that
+# ship tarballs instead tend to use the kernel's spelling, which is `uname -m`.
+deb_arch() {
+  dpkg --print-architecture
 }
 
 # --- enterprise-managed software -------------------------------------------
