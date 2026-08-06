@@ -22,12 +22,9 @@ jobs:
           chmod +x /tmp/shfmt
           sudo mv /tmp/shfmt /usr/local/bin/shfmt
 
-      # setup-linux.sh, setup-wsl.sh, and setup-ffmpeg.sh are excluded until they
-      # get the same rewrite the macOS scripts did. See src/docs/setup/mac-setup.md.
       - name: Collect shell scripts
         run: |
           shfmt -f src/scripts/setup src/scripts/global src/conf/starship \
-            | grep -vE 'setup-(linux|wsl|ffmpeg)\.sh$' \
             | tee scripts.txt
           test -s scripts.txt
 
@@ -43,6 +40,10 @@ jobs:
   # script in question, and setup-zsh.sh runs over curl before Homebrew exists
   # at all — and 3.2 rejects constructs bash 5 accepts. Those are parse errors,
   # so they take the whole script down before its first line of output.
+  #
+  # The Linux scripts are held to the same version even though every Linux has
+  # bash 5, because they share lib/ with the macOS ones and a 3.2-hostile
+  # construct added there would only surface on a Mac.
   bash32:
     name: bash 3.2 and zsh
     runs-on: macos-latest
@@ -63,7 +64,6 @@ jobs:
       - name: Collect shell scripts
         run: |
           shfmt -f src/scripts/setup src/scripts/global src/conf/starship \
-            | grep -vE 'setup-(linux|wsl|ffmpeg)\.sh$' \
             | tee scripts.txt
           test -s scripts.txt
 
