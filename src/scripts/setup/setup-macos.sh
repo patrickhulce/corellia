@@ -97,10 +97,10 @@ link_shell_config() {
   link_config "$CORELLIA_CONF_DIR/direnv/direnv.toml" "$HOME/.config/direnv/direnv.toml"
   link_config "$CORELLIA_CONF_DIR/tmux/tmux.conf" "$HOME/.tmux.conf"
 
-  # File by file rather than the whole ~/.config/zed, which is also where Zed
-  # keeps downloaded extensions and thread history. See src/conf/zed/README.md.
-  link_config "$CORELLIA_CONF_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
-  link_config "$CORELLIA_CONF_DIR/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+  # Copied, not linked: Zed writes to these files itself, and a link means it
+  # writes into the repo. See src/conf/zed/README.md.
+  copy_config "$CORELLIA_CONF_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
+  copy_config "$CORELLIA_CONF_DIR/zed/keymap.json" "$HOME/.config/zed/keymap.json"
 }
 
 install_global_scripts() {

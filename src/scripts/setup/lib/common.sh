@@ -81,6 +81,31 @@ link_config() {
   step "Linked $link"
 }
 
+# copy_config <source> <destination>
+#
+# Seeds <destination> from <source> once, for config an app writes back to.
+# Unlike link_config this never overwrites an existing file: the copy is a
+# starting point the app then owns, and re-running setup must not undo what it
+# has written since. A symlink left by an earlier setup is replaced, which is
+# the point — that link is how the app's machine-local state ends up in the repo.
+copy_config() {
+  local source="$1"
+  local destination="$2"
+
+  mkdir -p "$(dirname "$destination")"
+
+  if [ -L "$destination" ]; then
+    rm "$destination"
+    warn "$destination was a symlink into the repo; replacing it with a copy"
+  elif [ -e "$destination" ]; then
+    skip "$destination exists; leaving it alone (repo copy: $source)"
+    return
+  fi
+
+  cp "$source" "$destination"
+  step "Copied $destination"
+}
+
 # --- sparse checkout --------------------------------------------------------
 
 # ensure_sparse_paths

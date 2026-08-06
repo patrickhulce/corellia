@@ -152,8 +152,10 @@ Editor extensions are the exception, and stay a reference list in
 Cursor and VS Code both sync extensions through their own accounts, so scripting
 the install fights that sync instead of helping it. Zed is the editor that isn't
 an exception — it has no account sync, so its settings and keymap are versioned
-and linked like any other text config. [`src/conf/zed/README.md`](../../conf/zed/README.md)
-covers why they're linked file by file rather than as a directory.
+here. They are *copied* into `~/.config/zed` rather than linked, and once only:
+Zed writes to its own settings file, and a link means it writes into the repo.
+[`src/conf/zed/README.md`](../../conf/zed/README.md) has the details, including
+what leaked out the last time they were linked.
 
 Machine-specific, non-secret overrides go in `~/.zshrc.local`, which the loader
 sources last.
