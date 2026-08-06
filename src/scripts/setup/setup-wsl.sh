@@ -1,34 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# The GPU stack under WSL. Safe to re-run.
+#
+#   ./src/scripts/setup/setup-wsl.sh [--skip-docker]
+#
+# A wrapper rather than a script of its own. WSL needs the same CUDA toolkit,
+# Docker, and container toolkit as any other GPU box, differing only in that the
+# card belongs to Windows — its driver is projected into the guest at
+# /usr/lib/wsl/lib, so no Linux driver is installed, and CUDA comes from
+# NVIDIA's wsl-ubuntu repository instead of the one named for the release.
+#
+# That was a second copy of the same apt-repository dance for years, and it
+# drifted on its own schedule: it was still using `apt-key`, retired in 22.04,
+# to install `nvidia-docker2`, replaced in 2023. One implementation with a flag
+# is what stops that happening again.
+#
+# setup-linux-gpu.sh detects WSL on its own, so this exists as the name to reach
+# for rather than as something you have to run. Run setup-linux.sh first for the
+# shell and tooling.
 
-set -euxo pipefail
+set -euo pipefail
 
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-sudo apt-get update
-sudo apt-get install -y nvidia-docker2
-cat > /etc/docker/daemon.json <<EOF
-{
-    "runtimes": {
-        "nvidia": {
-            "path": "nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    },
-    "default-runtime": "nvidia"
-}
-EOF
-sudo systemctl restart docker
-docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
-
-# From https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_network
-wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
-sudo dpkg -i cuda-keyring_1.1-1_all.deb
-sudo apt-get update
-sudo apt-get -y install cuda-toolkit-12-3
-
-cat >> ~/.zshrc <<EOF
-
-export PATH="/usr/local/cuda/bin:$PATH"
-export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
-EOF
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/setup-linux-gpu.sh" --wsl "$@"
