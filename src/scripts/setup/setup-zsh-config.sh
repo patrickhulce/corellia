@@ -148,4 +148,5 @@ if [ "$missing" -gt 0 ]; then
   die "$missing required file(s) still missing after curl and git fallback"
 fi
 
+# shellcheck disable=SC2016 # $f is a loop variable in the command being printed
 printf '\nDone. Open a new shell, or run:\n\n  for f in %s/*.zsh; do . "$f"; done\n' "$ZSH_DIR"
