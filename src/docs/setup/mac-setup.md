@@ -485,10 +485,24 @@ anything exported into the shell is readable by every process started from it.
 
 ## Other platforms
 
-`setup-linux.sh`, `setup-wsl.sh`, and `setup-ffmpeg.sh` predate this rewrite and
-target Ubuntu 22.04. They have known problems (retired `apt-key` usage, the
-replaced `nvidia-docker2` package, a hardcoded hostname) and are due their own
-pass. Read them before running them.
+Headless Linux — a GPU box, a cloud VM, WSL, or anything you only reach over ssh
+— has its own one-command setup, and gets the same shell, prompt, and CLI
+tooling as this. See [linux-setup.md](linux-setup.md).
+
+The two share `lib/shell.sh`, `lib/git.sh`, and `lib/ssh.sh`, so the loader
+block, the git configuration, and the SSH identity are the same code on both;
+only the handful of Apple-specific lines (`UseKeychain`,
+`ssh-add --apple-use-keychain`, `scutil`) branch. `setup-languages.sh` is shared
+outright.
+
+For a machine that isn't yours to provision — a work laptop, or a box you only
+ever ssh into — take the prompt and shell config on their own, with no checkout
+and no dependency on this repo:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/patrickhulce/corellia/main/src/scripts/setup/setup-starship.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/patrickhulce/corellia/main/src/scripts/setup/setup-zsh-config.sh)"
+```
 
 ## Legacy notes
 
