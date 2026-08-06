@@ -27,8 +27,27 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init "$_corellia_shell")"
 fi
 
+# `fzf --zsh` and `fzf --bash` print the integration from inside the binary, but
+# only since 0.48. The Debian and Ubuntu archives are well behind that — 0.29 on
+# 22.04, 0.44 on 24.04 — and an older fzf answers with "unknown option: --zsh"
+# on every single prompt. Fall back to the scripts the package ships instead.
+#
+# The output is captured rather than probed and then fetched again, so this
+# stays one process per shell start rather than two.
 if command -v fzf >/dev/null 2>&1; then
-  eval "$(fzf "--$_corellia_shell")"
+  if _corellia_fzf_init="$(fzf "--$_corellia_shell" 2>/dev/null)"; then
+    eval "$_corellia_fzf_init"
+  else
+    for _corellia_fzf in \
+      "/usr/share/doc/fzf/examples/key-bindings.$_corellia_shell" \
+      "/usr/share/fzf/key-bindings.$_corellia_shell" \
+      "/usr/share/doc/fzf/examples/completion.$_corellia_shell" \
+      "/usr/share/fzf/completion.$_corellia_shell"; do
+      [ -r "$_corellia_fzf" ] && . "$_corellia_fzf"
+    done
+    unset _corellia_fzf
+  fi
+  unset _corellia_fzf_init
 fi
 
 # Prompt, in place of an oh-my-zsh theme. 05-oh-my-zsh.zsh leaves ZSH_THEME

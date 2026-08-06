@@ -38,6 +38,11 @@ In practice:
   zsh-autosuggestions — go behind `[ -n "${ZSH_VERSION:-}" ]`. They still have to
   *parse* under bash, which is a lower bar than running: an array assignment and
   an unknown command name are both fine.
+- Don't assume the *version* of a tool either, only that it exists. Homebrew is
+  current and the Debian and Ubuntu archives are years behind: `fzf --zsh` needs
+  0.48 and 24.04 ships 0.44, which is why `20-tools.zsh` tries the flag before
+  it uses it. A guard that only checks `command -v` turns into an error printed
+  on every prompt.
 
 To check a change, source the files in both shells and confirm neither complains:
 
