@@ -1,49 +1,21 @@
-// Zed user settings, symlinked to ~/.config/zed/settings.json by setup-macos.sh.
+// Zed user settings, copied to ~/.config/zed/settings.json by setup-macos.sh.
+//
+// A starting point, not a live link. Zed writes to its settings file — the SSH
+// connections you open, remote endpoints, whatever the settings UI touches — so
+// anything host-specific belongs in your ~/.config copy and never here.
 //
 // Zed reads this as JSONC, so the reasoning can live next to the setting.
 // Everything not listed here is deliberately left at Zed's default.
 {
-  // Cursor and VS Code are the editors of record, so Zed inherits their
-  // bindings rather than asking for a third set of muscle memory. keymap.json
-  // holds only the handful this doesn't cover.
-  "agent_servers": {
-    "codex-acp": {
-      "type": "registry"
-    },
-    "claude-acp": {
-      "type": "registry"
-    }
-  },
-  "language_models": {
-    "openai_compatible": {
-      "NCP": {
-        "api_url": "http://mgp.local.dev.netflix.net:9123/proxy/phulcews/v1",
-        "available_models": [
-          {
-            "name": "gpt-5.6-sol",
-            "display_name": "GPT 5.6 Sol (NFLX)",
-            "max_tokens": 200000,
-            "max_output_tokens": 32000,
-            "max_completion_tokens": 200000,
-            "reasoning_effort": "medium",
-            "capabilities": {
-              "tools": true,
-              "images": true,
-              "parallel_tool_calls": false,
-              "prompt_cache_key": false,
-              "chat_completions": true,
-              "interleaved_reasoning": false,
-              "max_tokens_parameter": false
-            }
-          }
-        ]
-      }
-    }
-  },
+  "cli_default_open_behavior": "new_window",
   "session": {
     "trust_all_worktrees": true
   },
   "icon_theme": "Zed (Default)",
+
+  // Cursor and VS Code are the editors of record, so Zed inherits their
+  // bindings rather than asking for a third set of muscle memory. keymap.json
+  // holds only the handful this doesn't cover.
   "base_keymap": "Cursor",
 
   // Installed by the font-fira-code-nerd-font cask in src/conf/Brewfile, the
