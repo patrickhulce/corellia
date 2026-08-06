@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# Phase 5 of the macOS setup: language runtimes, global tooling, and agent
-# skills. Safe to re-run.
+# Language runtimes, global tooling, and agent skills. The last phase of the
+# macOS setup and of the Linux one, and identical on both: mise, npm, rustup,
+# and uv behave the same either way, so only the "install it first" messages
+# have to know which machine this is. Safe to re-run.
 #
 #   ./src/scripts/setup/setup-languages.sh
 
@@ -49,7 +51,7 @@ EOF
 }
 
 install_node() {
-  have mise || die "mise is missing; run setup-macos.sh first"
+  have mise || die "mise is missing; run $(os_setup_script) first"
 
   step "Installing Node $NODE_VERSION"
   note "mise downloads and unpacks a Node build; quiet for a minute."
@@ -75,11 +77,12 @@ install_npm_globals() {
 # rust-toolchain.toml files, clippy, and rust-analyzer all expect rustup to be
 # the thing managing toolchains.
 install_rust() {
-  have rustup || die "rustup is missing; run setup-macos.sh first"
+  have rustup || die "rustup is missing; run $(os_setup_script) first"
 
-  # Homebrew ships rustup as the renamed rustup-init binary, so there is no
-  # separate installer step. `rustup default` installs the toolchain when it is
-  # missing and is a no-op afterwards.
+  # rustup is on disk by now either way — Homebrew ships it as the renamed
+  # rustup-init binary, and the Linux setup runs sh.rustup.rs with
+  # --default-toolchain none — so there is no separate installer step. `rustup
+  # default` installs the toolchain when it is missing and is a no-op after.
   step "Installing the stable Rust toolchain"
   note "Several hundred megabytes on a fresh machine."
   rustup default stable
@@ -88,13 +91,14 @@ install_rust() {
   # shellcheck disable=SC2086 # RUST_COMPONENTS is a deliberate word-split list
   rustup component add $RUST_COMPONENTS
 
-  # The formula is keg-only, so cargo and rustc are only on PATH once
-  # src/conf/zsh/10-path.zsh has been sourced. Ask rustup directly instead.
+  # cargo and rustc reach PATH through src/conf/zsh/10-path.zsh, which this
+  # shell hasn't sourced: on macOS the formula is keg-only, and on Linux they
+  # live under ~/.cargo. Ask rustup directly instead.
   skip "$(rustup run stable rustc --version)"
 }
 
 install_python_tools() {
-  have uv || die "uv is missing; run setup-macos.sh first"
+  have uv || die "uv is missing; run $(os_setup_script) first"
 
   local tool
   for tool in $UV_TOOLS; do
@@ -138,7 +142,7 @@ install_skills() {
 }
 
 main() {
-  require_macos
+  require_supported_os
   parse_common_flags "$@"
 
   log "Node"
